@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ledger Detail</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+
+<body>
+
+<h2 style="text-align:center;" id="title">Loan Account Ledger</h2>
+
+<table border="1" width="80%" align="center" cellpadding="5">
+<thead>
+<tr>
+    <th>Date</th>
+    <th>Debit</th>
+    <th>Credit</th>
+    <th>Balance</th>
+    <th>Mode</th>
+    <th>Narration</th>
+    <th>Action</th>
+</tr>
+</thead>
+
+<tbody id="tbody"></tbody>
+</table>
+
+<br>
+
+<div style="text-align:center;">
+    <button onclick="goBack()">Back</button>
+</div>
+
+<div id="editPopup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+
+    <div style="background:white; width:350px; margin:100px auto; padding:20px;">
+
+        <h3>Edit Entry</h3>
+
+        Type:<br>
+        <select id="edit_type" style="width:100%; height:35px;">
+            <option value="Payment">Payment</option>
+            <option value="Received">Received</option>
+        </select><br><br>
+
+        Amount:<br>
+        <input type="number" id="edit_amount" style="width:100%; height:35px;"><br><br>
+
+        Mode:<br>
+        <select id="edit_mode" style="width:100%; height:35px;">
+            <option>Cash</option>
+            <option>Online</option>
+        </select><br><br>
+
+        Narration:<br>
+        <input type="text" id="edit_note" style="width:100%; height:35px;"><br><br>
+
+        <button onclick="updateVoucher()" style="background:green;color:white;">Save</button>
+        <button onclick="closeEdit()">Cancel</button>
+
+    </div>
+</div>
+
+
+
+<script>
+
+let name = new URLSearchParams(window.location.search).get("name");
+
+console.log("Ledger Name from URL:", name);
+
+document.getElementById("title").innerText = name + " Ledger";
+
+async function load(){
+
+    let res = await fetch(`/ledger-detail?name=${name}`);
+    let data = await res.json();
+
+    let balance = 0;
+    let html = "";
+
+    data.forEach(d => {
+
+        balance = balance + Number(d.debit) - Number(d.credit);
+
+        let balText = "";
+
+        if(balance >= 0){
+            balText = balance + " Dr";
+        } else {
+            balText = Math.abs(balance) + " Cr";
+        }
+
+        html += `
+        <tr oncontextmenu="openMenu(event, '${d.voucher_id}')">
+            <td>${d.date}</td>
+            <td>${d.debit}</td>
+            <td>${d.credit}</td>
+            <td>${balText}</td>
+            <td>${d.mode}</td>
+            <td>${d.narration}</td>            
+        </tr>
+        `;
+    });
+
+    document.getElementById("tbody").innerHTML = html;
+}
+
+function goBack(){
+    window.history.back();
+}
+
+load();
+
+async function openEdit(voucher_id){
+
+    document.getElementById("editPopup").style.display = "block";
+
+    let res = await fetch(`/ledger-detail?voucher_id=${voucher_id}`);
+    let data = await res.json();
+
+    let d = data[0];
+
+    currentVoucher = d.voucher_id;
+
+    document.getElementById("edit_amount").value = d.debit > 0 ? d.debit : d.credit;
+    document.getElementById("edit_mode").value = d.mode;
+    document.getElementById("edit_note").value = d.narration;
+
+    if(d.debit > 0){
+        document.getElementById("edit_type").value = "Payment";
+    } else {
+        document.getElementById("edit_type").value = "Received";
+    }
+}
+
+let currentVoucher = "";
+let currentLedger = "";
+
+async function updateVoucher(){
+
+    let amount = document.getElementById("edit_amount").value;
+    let mode = document.getElementById("edit_mode").value;
+    let type = document.getElementById("edit_type").value;
+    let note = document.getElementById("edit_note").value;
+
+    await fetch("/update-entry", {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+            voucher_id: currentVoucher,
+            account: name,
+            type: type,
+            amount: amount,
+            mode: mode,
+            note: note
+        })
+    });
+
+    alert("Updated ✅");
+    location.reload();
+}
+
+async function deleteEntry(){
+
+    if(!confirm("Delete karna hai?")) return;
+
+    await fetch(`/delete-entry?id=${currentId}`, {
+        method:"POST"
+    });
+
+    alert("Deleted ✅");
+    location.reload();
+}
+
+function closeEdit(){
+    document.getElementById("editPopup").style.display = "none";
+}   
+
+let currentId = null;
+
+function openMenu(e, voucher_id){
+    e.preventDefault();
+
+    currentId = voucher_id;   // ✅ id नहीं, voucher_id
+
+    let menu = document.getElementById("menu");
+
+    menu.style.display = "block";
+    menu.style.left = e.pageX + "px";
+    menu.style.top = e.pageY + "px";
+}
+
+// click anywhere → hide menu
+document.addEventListener("click", function(){
+    document.getElementById("menu").style.display = "none";
+});
+
+function editEntry(){
+
+    document.getElementById("menu").style.display = "none";
+
+    openEdit(currentId);
+}
+
+</script>
+
+<div id="menu" style="
+    display:none;
+    position:absolute;
+    background:white;
+    border:1px solid #ccc;
+    padding:5px;
+    box-shadow:0 0 10px rgba(0,0,0,0.3);
+">
+    <div onclick="editEntry()" style="padding:5px; cursor:pointer;">✏️ Edit</div>
+    <div onclick="deleteEntry()" style="padding:5px; cursor:pointer; color:red;">❌ Delete</div>
+</div>
+
+</body>
+</html>

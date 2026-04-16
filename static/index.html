@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+<style>
+body{
+    font-family: Arial;
+    background:#f5f6fa;
+    text-align:center;
+}
+
+h1{
+    margin:20px;
+}
+
+.container{
+    width:300px;
+    margin:auto;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+button{
+    padding:12px;
+    font-size:15px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.green{ background:#27ae60; color:white; }
+.blue{ background:#2980b9; color:white; }
+.orange{ background:#e67e22; color:white; }
+.dark{ background:#2c3e50; color:white; }
+.red{ background:#e74c3c; color:white; }
+
+</style>
+</head>
+
+<body>
+
+<h1>💼 Dashboard</h1>
+
+<div class="container">
+
+    <button class="green" onclick="openDDS()">💰 DDS System</button>
+
+    <button class="green" onclick="openDaily()">📅 Daily Loan System</button>
+
+    <button class="green" onclick="openMonthly()">📆 Monthly Loan System</button>
+
+    <button class="orange" onclick="openSummary()">📊 Summary</button>
+
+    <button class="dark" onclick="openGL()">📊 General Ledger</button>
+
+    <button class="dark" onclick="openDaybook()">📖 Daybook</button>
+
+    <button class="blue" onclick="openImport()">➕ Add Member / Import Excel</button>
+
+    <button class="red" onclick="openClose()">❌ Close Account</button>
+
+    <button onclick="takeBackup()" style="background:blue;color:white;padding:8px 15px;">
+        Full System Backup
+    </button>
+
+<div style="margin-top:10px; padding:10px; border:1px solid gray; width:100%; box-sizing:border-box;">
+    
+<button onclick="toggleRestore()" 
+        style="background:red;color:white;padding:8px 15px;margin-top:10px;">
+    Restore Backup
+</button>
+
+<button onclick="logout()" style="background:black;color:white;">
+    Logout
+</button>
+
+<div id="restoreBox" 
+     style="display:none; margin-top:10px; padding:10px; border:1px solid gray; width:100%; box-sizing:border-box;">
+
+    <!-- 🔹 Dropdown Restore -->
+    <select id="backupList" style="width:100%; margin-bottom:5px;"></select>
+
+    <input type="password" id="restorePwd" placeholder="Enter Password" 
+           style="width:100%; margin-bottom:5px;">
+
+    <button onclick="restoreBackup()" 
+            style="background:red;color:white;width:100%;margin-bottom:10px;">
+        Restore from Backup
+    </button>
+
+    <!-- 🔹 Divider -->
+    <hr>
+
+    <!-- 🔹 File Restore -->
+    <input type="file" id="manualFile" style="width:100%; margin-bottom:5px;">
+
+    <button onclick="restoreFromFile()" 
+            style="background:orange;color:white;width:100%;">
+        Restore from File
+    </button>
+
+</div>
+
+<button onclick="toggleAdminPanel()" 
+style="width:100%; background:black; color:white; margin-top:10px;">
+⚙️ Admin Panel
+</button>
+
+<div id="adminPanel" style="display:none; margin-top:10px; border:1px solid #ccc; padding:10px;">
+
+    <!-- Change Password -->
+    <div style="margin-bottom:10px;">
+        <h4>🔐 Change Password</h4>
+        <!-- Old Password -->
+        <div style="position:relative; margin-bottom:8px; width:100%;">
+            <input type="password" id="oldPass" placeholder="Old Password"
+                style="width:100%; padding:8px 35px 8px 8px; box-sizing:border-box;">
+
+            <span onclick="togglePass('oldPass')" 
+                style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;">
+                👁
+            </span>
+        </div>
+
+        <!-- New Password -->
+        <div style="position:relative; margin-bottom:8px; width:100%;">
+            <input type="password" id="newPass2" placeholder="New Password"
+                style="width:100%; padding:8px 35px 8px 8px; box-sizing:border-box;">
+
+            <span onclick="togglePass('newPass2')" 
+                style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;">
+                👁
+            </span>
+        </div>
+
+        <button onclick="sendOTP()" 
+            style="width:100%; margin-bottom:8px; background:blue; color:white;">
+            Send OTP to Registered Mobile
+        </button>
+
+        <div style="position:relative; margin-bottom:8px; width:100%;">
+            <input type="text" id="otp" placeholder="Enter OTP"
+                style="width:100%; padding:8px 35px 8px 8px; box-sizing:border-box;">
+        </div>
+        
+        <button onclick="changePassword()" style="background:black;color:white;width:100%;">
+            Update Password
+        </button>
+    </div>
+
+    <!-- Add User -->
+    <div id="userPanel">
+        <h4>👤 Add User</h4>
+
+        <input type="text" id="newUser" placeholder="Username" style="width:100%; margin-bottom:5px;">
+        <input type="password" id="newPass" placeholder="Password" style="width:100%; margin-bottom:5px;">
+
+        <select id="newRole" style="width:100%; margin-bottom:5px;">
+            <option value="admin">Admin</option>
+            <option value="staff">Staff</option>
+        </select>
+
+        <button onclick="addUser()" style="background:green;color:white;width:100%;">
+            Add User
+        </button>
+    </div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+if(localStorage.getItem("login") !== "yes"){
+    window.location.href = "login.html";
+}
+
+function openDDS(){
+    window.location.href = "dds.html";
+}
+
+function openDaily(){
+    window.location.href = "daily_menu.html";
+}
+
+function openMonthly(){
+    window.location.href = "monthly_menu.html";
+}
+
+function openSummary(){
+    window.location.href = "summary.html";
+}
+
+function openGL(){
+    window.location.href = "general_ledger.html";
+}
+
+function openDaybook(){
+    window.location.href = "/daybook.html";
+}
+
+function openImport(){
+    window.location.href = "import_excel.html";
+}
+
+function openClose(){
+    window.location.href = "close_account.html";
+}
+
+function toggleRestore(){
+    let box = document.getElementById("restoreBox");
+    box.style.display = (box.style.display === "none") ? "block" : "none";
+}
+
+function logout(){
+    localStorage.removeItem("login");
+    window.location.href = "login.html";
+}
+
+function toggleAdminPanel(){
+    let panel = document.getElementById("adminPanel");
+
+    if(panel.style.display === "none"){
+        panel.style.display = "block";
+    }else{
+        panel.style.display = "none";
+    }
+}
+
+function togglePass(id){
+    let input = document.getElementById(id);
+
+    if(input.type === "password"){
+        input.type = "text";
+    }else{
+        input.type = "password";
+    }
+}
+
+async function takeBackup(){
+
+    let btn = event.target;
+
+    btn.innerText = "Backing...";
+    btn.disabled = true;
+
+    let res = await fetch("/backup");
+    let data = await res.json();
+
+    if(data.status === "ok"){
+        alert("✅ Backup Created:\n" + data.file);
+    }else{
+        alert("❌ Backup Failed");
+    }
+
+    btn.innerText = "Full System Backup";
+    btn.disabled = false;
+}
+
+async function loadBackupList(){
+
+    let res = await fetch("/backup-list");
+    let data = await res.json();
+
+    let select = document.getElementById("backupList");
+
+    select.innerHTML = "";
+
+    data.forEach(f => {
+        let opt = document.createElement("option");
+        opt.value = f;
+        opt.text = f;
+        select.appendChild(opt);
+    });
+}
+
+async function restoreBackup(){
+
+    let file = document.getElementById("backupList").value;
+    let password = document.getElementById("restorePwd").value;
+
+    if(!file){
+        alert("Select backup first");
+        return;
+    }
+
+    if(!password){
+        alert("Enter password");
+        return;
+    }
+
+    if(!confirm("⚠️ Current data will be replaced. Continue?")){
+        return;
+    }
+
+    let res = await fetch("/restore", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({file, password})
+    });
+
+    let data = await res.json();
+
+    if(data.status === "ok"){
+        alert("✅ Restore Successful");
+        location.reload();
+    }else{
+        alert("❌ " + data.msg);
+    }
+}
+
+// page load पर list load
+window.onload = function(){
+
+    if(localStorage.getItem("login") !== "yes"){
+        window.location.href = "login.html";
+    }
+
+    let role = localStorage.getItem("role");
+
+    if(role !== "admin"){
+        let panel = document.getElementById("adminPanel");
+        if(panel){
+            panel.style.display = "none";
+        }
+    }
+
+    loadBackupList();
+}
+
+let role = localStorage.getItem("role");
+
+if(role !== "admin"){
+    document.getElementById("adminPanel").style.display = "none";
+}
+
+async function restoreFromFile() {
+
+    let file = document.getElementById("manualFile").files[0];
+    let password = document.getElementById("restorePwd").value;
+
+    if(!file){
+        alert("Select file first");
+        return;
+    }
+
+    if(!password){
+        alert("Enter password");
+        return;
+    }
+
+    if(!confirm("⚠️ Current data will be replaced. Continue?")){
+        return;
+    }
+
+    let formData = new FormData();
+    formData.append("file", file);
+    formData.append("password", password);
+
+    let res = await fetch("/restore-file", {
+        method: "POST",
+        body: formData
+    });
+
+    let data = await res.json();
+
+    if(data.status === "ok"){
+        alert("✅ Restore Successful");
+        location.reload();
+    }else{
+        alert("❌ " + data.msg);
+    }
+}
+
+async function addUser(){
+
+    let username = document.getElementById("newUser").value;
+    let password = document.getElementById("newPass").value;
+    let role = document.getElementById("newRole").value;
+
+    if(!username || !password){
+        alert("Fill all fields");
+        return;
+    }
+
+    let res = await fetch("/add-user", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({username, password, role})
+    });
+
+    let data = await res.json();
+
+    if(data.status === "ok"){
+        alert("✅ User Added");
+    }else{
+        alert("❌ " + data.msg);
+    }
+}
+
+async function changePassword(){
+
+    let old_password = document.getElementById("oldPass").value;
+    let new_password = document.getElementById("newPass2").value;
+    let otp = document.getElementById("otp").value;
+
+    let username = localStorage.getItem("username");
+
+    if(!new_password || !otp){
+        alert("Fill all fields");
+        return;
+    }
+
+    let res = await fetch("/change-password", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            username,
+            old_password,
+            otp,
+            new_password
+        })
+    });
+
+    let data = await res.json();
+
+    if(data.status === "ok"){
+        alert("✅ Password Updated Successfully");
+
+        document.getElementById("oldPass").value = "";
+        document.getElementById("newPass2").value = "";
+        document.getElementById("otp").value = "";
+    }else{
+        alert("❌ " + data.msg);
+    }
+}
+
+async function sendOTP(){
+
+    let username = localStorage.getItem("username");
+
+    if(!username){
+        alert("User not found");
+        return;
+    }
+
+    let res = await fetch("/send-otp", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({username})
+    });
+
+    let data = await res.json();
+
+    if(data.status === "otp sent"){
+        alert("✅ OTP sent (check CMD)");
+    }else{
+        alert("❌ " + data.msg);
+    }
+}
+  
+</script>
+
+</body>
+</html>

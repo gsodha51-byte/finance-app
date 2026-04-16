@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Monthly Due List</title>
+
+    <style>
+        body{
+            font-family: Arial;
+            background:#f5f6fa;
+            text-align:center;
+        }
+
+        table{
+            width:85%;
+            margin:20px auto;
+            border-collapse:collapse;
+            background:white;
+        }
+
+        th, td{
+            border:1px solid #ccc;
+            padding:8px;
+        }
+
+        th{
+            background:#2c3e50;
+            color:white;
+        }
+
+        button{
+            padding:6px 10px;
+            margin:10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>📅 Monthly Due List</h2>
+
+<button onclick="loadDue()">Load</button>
+
+<h3>❌ Due Members</h3>
+<table>
+<thead>
+<tr>
+    <th>Account</th>
+    <th>Name</th>
+    <th>Mobile</th>
+    <th>Oldest Due</th>
+    <th>Due Kist</th>
+</tr>
+</thead>
+<tbody id="dueBody"></tbody>
+</table>
+
+<h3>✅ Paid Members</h3>
+<table>
+<thead>
+<tr>
+    <th>Account</th>
+    <th>Name</th>
+    <th>Mobile</th>
+    <th>Next Due</th>
+</tr>
+</thead>
+<tbody id="paidBody"></tbody>
+</table>
+
+<br>
+<a href="monthly_menu.html">← Back</a>
+
+<script>
+
+async function loadDue(){
+
+    let res = await fetch("/monthly-due");
+    let data = await res.json();
+
+    let dc = document.getElementById("dueCount");
+    if(dc){
+        dc.innerText = data.due.length;
+    }
+
+    let dueHTML = "";
+    let paidHTML = "";
+
+    // 🔴 Due
+    data.due.forEach(d => {
+        dueHTML += `
+        <tr>
+            <td>${d.account}</td>
+            <td>${d.name}</td>
+            <td>${d.mobile}</td>
+            <td>${d.due_date}</td>
+            <td>${d.due_kist}</td>
+        </tr>
+        `;
+    });
+
+    // 🟢 Paid
+    data.paid.forEach(d => {
+        paidHTML += `
+        <tr>
+            <td>${d.account}</td>
+            <td>${d.name}</td>
+            <td>${d.mobile}</td>
+            <td>${d.next_due}</td>
+        </tr>
+        `;
+    });
+
+    if(data.due.length === 0){
+        dueHTML = `<tr><td colspan="5" style="text-align:center;color:red;font-weight:bold;">
+        No Due Members 🎉
+        </td></tr>`;
+    }
+
+    if(data.paid.length === 0){
+        paidHTML = `<tr><td colspan="4" style="text-align:center;color:green;font-weight:bold;">
+        All Members Paid ✅
+        </td></tr>`;
+    }
+
+    document.getElementById("dueBody").innerHTML = dueHTML;
+    document.getElementById("paidBody").innerHTML = paidHTML;
+}
+
+</script>
+
+</body>
+</html>

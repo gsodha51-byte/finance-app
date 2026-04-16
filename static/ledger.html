@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Member Ledger</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <style>
+
+    body{
+        font-family: Arial;
+        background:#f5f6fa;
+    }
+
+    /* 🔥 CENTER BOX */
+    .container{
+        width:900px;
+        margin:20px auto;
+        background:white;
+        padding:15px;
+        box-shadow:0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .header{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+    }
+
+    .title{
+        font-size:18px;
+        font-weight:bold;
+    }
+
+    .info{
+        margin-top:5px;
+        font-size:13px;
+    }
+
+    table{
+        width:100%;
+        border-collapse:collapse;
+        margin-top:15px;
+        table-layout:fixed;
+    }
+
+    th{
+        background:#2c3e50;
+        color:white;
+        padding:6px;
+        font-size:12px;
+    }
+
+    td{
+        padding:5px;
+        font-size:12px;
+        text-align:center;
+        overflow:hidden;
+        white-space:nowrap;
+    }
+
+    /* 🔥 PERFECT COLUMN SIZE */
+    th:nth-child(1), td:nth-child(1){ width:90px; }   /* Date */
+    th:nth-child(2), td:nth-child(2){ width:60px; }   /* Debit */
+    th:nth-child(3), td:nth-child(3){ width:60px; }   /* Credit */
+    th:nth-child(4), td:nth-child(4){ width:70px; }   /* Mode */
+    th:nth-child(5), td:nth-child(5){ width:120px; }  /* Narration */
+    th:nth-child(6), td:nth-child(6){ width:100px; }  /* Balance */
+
+    tr:nth-child(even){
+        background:#f1f2f6;
+    }
+
+    .debit{
+        color:red;
+    }
+
+    .credit{
+        color:green;
+    }
+
+    .balance{
+        text-align:right;
+        font-weight:bold;
+    }
+
+    .actions{
+        margin-top:15px;
+        text-align:center;
+    }
+
+    .actions input{
+        padding:4px;
+        font-size:12px;
+        width:110px;
+    }
+
+    .actions button{
+        margin:3px;
+        padding:5px 10px;
+        font-size:12px;
+    }
+
+    .bottom{
+        margin-top:15px;
+        text-align:center;
+        font-size:14px;
+    }
+
+    /* 🔥 DOCUMENT POPUP DESIGN */
+    .doc-box{
+        background:white;
+        width:420px;
+        margin:100px auto;
+        padding:25px;
+        border-radius:12px;
+        box-shadow:0 10px 25px rgba(0,0,0,0.2);
+        text-align:center;
+    }
+
+    .doc-title{
+        font-size:18px;
+        font-weight:bold;
+        margin-bottom:15px;
+        color:#2c3e50;
+    }
+
+    .doc-file{
+        margin:15px 0;
+    }
+
+    .doc-btn{
+        padding:8px 15px;
+        margin:5px;
+        border:none;
+        border-radius:6px;
+        cursor:pointer;
+        font-size:13px;
+    }
+
+    /* button colors */
+    .upload{ background:#27ae60; color:white; }
+    .open{ background:#2980b9; color:white; }
+    .delete{ background:#e74c3c; color:white; }
+    .close{ background:#7f8c8d; color:white; }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+    <div>
+        <div class="title" id="name">Name</div>
+        <div class="info">
+            Mobile: <span id="mobile"></span> |
+            Loan: <span id="loan"></span> |
+            Installment: <span id="inst"></span> |
+            Start Date: <span id="start_date_show"></span>
+        </div>
+    </div>
+
+    <button onclick="openDocs()" style="background:purple;color:white;">
+        Documents
+</button>
+
+</div>
+
+
+<table>
+<thead>
+<tr>
+    <th>Date</th>
+    <th>Debit</th>
+    <th>Credit</th>
+    <th>Mode</th>
+    <th>Narration</th>
+    <th>Balance</th>
+</tr>
+</thead>
+
+<tbody id="tbody"></tbody>
+</table>
+
+
+<!-- ENTRY -->
+<div class="actions">
+
+    Date:
+    <input type="date" id="date">
+
+    Install Amount:
+    <input type="number" id="amount">
+
+    <select id="mode">
+        <option value="Cash">Cash</option>
+        <option value="Online">Online</option>
+    </select>
+
+    <button onclick="saveInstallment()" style="background:green;color:white;">
+        Save Installment
+    </button>
+
+    Narration:
+    <input type="text" id="note">
+
+    <button onclick="addDebit()" style="background:orange;">
+        Add Debit
+    </button>
+
+</div>
+
+
+<div class="actions">
+
+    <button onclick="printLedger()" style="background:blue;color:white;">
+        Print Ledger
+    </button>
+    
+    <button onclick="openMember()" style="background:purple;color:white;">
+        Member Details
+    </button>
+
+    <button onclick="closeAccount()" style="background:red;color:white;">
+        Close Account
+    </button>
+
+</div>
+
+
+<div class="bottom">
+    <b>Total Collection:</b> <span id="total"></span><br>
+    <b>Pending:</b> <span id="pending"></span>
+</div>
+
+<br>
+
+<div style="text-align:center;">
+    <button onclick="goBack()">Close</button>
+</div>
+
+</div> <!-- 🔥 container close -->
+
+<!-- 🔥 RIGHT CLICK MENU -->
+<div id="contextMenu" style="display:none; position:absolute; background:white; border:1px solid #ccc; z-index:1000;">
+    <div onclick="editEntry()" style="padding:8px; cursor:pointer;">Edit Entry</div>
+    <div onclick="deleteEntry()" style="padding:8px; cursor:pointer;">Delete Entry</div>
+</div>
+
+<div id="editPopup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+
+    <div style="background:white; width:300px; margin:100px auto; padding:20px; text-align:center; border-radius:10px;">
+
+        <h3>Edit Entry</h3>
+
+        Debit:<br>
+        <input type="number" id="editDebit"><br><br>
+
+        Credit:<br>
+        <input type="number" id="editCredit"><br><br>
+
+        Mode:<br>
+        <select id="editMode">
+            <option value="Cash">Cash</option>
+            <option value="Online">Online</option>
+        </select>
+
+        <br><br>
+
+        <button onclick="saveEdit()">Save</button>
+        <button onclick="closeEdit()">Cancel</button>
+
+    </div>
+    </div>
+
+<div id="docPopup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+
+    <div style="
+        background:white;
+        width:420px;
+        margin:80px auto;
+        padding:25px;
+        border-radius:12px;
+        box-shadow:0 10px 25px rgba(0,0,0,0.2);
+        text-align:center;
+    ">
+
+        <div style="font-size:18px; font-weight:bold; margin-bottom:15px; color:#2c3e50;">
+            📄 Document Manager
+        </div>
+
+        <!-- FILE SELECT -->
+        <input type="file" id="docFile" multiple>
+
+        <!-- PREVIEW BOX -->
+        <div id="previewBox" style="
+            border:2px dashed #ccc;
+            padding:10px;
+            border-radius:10px;
+            min-height:120px;
+            background:#fafafa;
+            margin-bottom:15px;
+            display:flex;
+            flex-wrap:wrap;
+            gap:10px;
+        ">
+
+            <span id="noPreview" style="color:#999;">No Documents</span>
+
+        </div>
+
+        <!-- BUTTONS -->
+        <div>
+            <button onclick="uploadDoc()" style="background:#27ae60;color:white;padding:8px 15px;border:none;border-radius:6px;">Upload</button>
+            <button onclick="deleteDoc()" style="background:#e74c3c;color:white;padding:8px 15px;border:none;border-radius:6px;">Delete</button>
+        </div>
+
+        <br>
+
+        <button onclick="closeDocs()" style="background:#7f8c8d;color:white;padding:7px 15px;border:none;border-radius:6px;">
+            Close
+        </button>
+
+    </div>
+
+</div>
+
+<div id="memberPopup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+
+    <div style="background:white; width:400px; margin:80px auto; padding:20px; border-radius:10px;">
+
+        <h3>Member Details</h3>
+
+        Name:<br>
+        <input type="text" id="m_name" readonly><br><br>
+
+        Father:<br>
+        <input type="text" id="m_father" readonly><br><br>
+
+        Village:<br>
+        <input type="text" id="m_village" readonly><br><br>
+
+        Mobile:<br>
+        <input type="text" id="m_mobile" readonly><br><br>
+
+        Guarantor 1:<br>
+        <input type="text" id="m_g1" readonly><br><br>
+
+        Guarantor 2:<br>
+        <input type="text" id="m_g2" readonly><br><br>
+
+        Loan Amount:<br>
+        <input type="number" id="m_amount" readonly><br><br>
+
+        Installment:<br>
+        <input type="number" id="m_inst" readonly><br><br>
+        <label>Start Date:</label>
+        <input type="date" id="start_date">
+
+        Type:<br>
+        <select id="m_type" disabled>
+            <option value="Daily">Daily</option>
+            <option value="Monthly">Monthly</option>
+        </select><br><br>
+
+        <button onclick="enableEdit()" style="background:orange;">Edit</button>
+        <button onclick="saveMember()" style="background:green;color:white;">Save</button>
+        <button onclick="closeMember()">Close</button>
+
+    </div>
+</div>
+
+</body>
+</html>
+
+<script>
+
+let selectedFile = null;
+
+let loan_id = new URLSearchParams(window.location.search).get("loan_id");
+
+console.log("Loan ID:", loan_id);
+
+let allFiles = [];
+
+function editLoan(){
+    alert("Loan edit disabled");
+}
+
+
+async function load(){
+
+    let res = await fetch(`/ledger-data?loan_id=${loan_id}`);
+    let data = await res.json();
+
+    console.log("FULL DATA:", data);
+
+    document.getElementById("name").innerText = 
+        "Name: " + data.name + " | Account No: " + data.account_no;
+    document.getElementById("mobile").innerText = data.mobile;
+    document.getElementById("loan").innerText = data.loan;
+    document.getElementById("inst").innerText = data.inst;
+    document.getElementById("start_date_show").innerText = data.start_date;
+
+    let html = ""; 
+
+    let balance = 0;   // 🔥 start from zero
+    let total = 0;
+
+    data.rows.forEach(r => {
+
+        balance = balance + r.debit - r.credit;   // 🔥 running balance
+        total += r.credit;
+
+        html += `
+        <tr ${r.id ? `data-id="${r.id}"` : ""}>
+            <td>${r.date}</td>
+            <td class="debit">${r.debit}</td>
+            <td class="credit">${r.credit}</td>
+            <td>${r.mode}</td>
+            <td>${r.narration}</td>
+            <td class="balance">${balance}</td>
+        </tr>
+        `;
+    });
+
+    document.getElementById("tbody").innerHTML = html;
+
+    document.getElementById("total").innerText = total;
+    document.getElementById("pending").innerText = balance;
+}
+
+
+async function saveInstallment(){
+
+    let amt = document.getElementById("amount").value;
+    let mode = document.getElementById("mode").value;
+
+    // ✅ VALIDATION ADD HERE
+    if(!amt || amt <= 0){
+        alert("Enter valid amount");
+        return;
+    }
+
+    // ✅ 2. NUMBER CHECK (Pro Tip)
+    if(isNaN(amt)){
+        alert("Invalid number");
+        return;
+    }
+
+    await fetch(`/collect?loan_id=${loan_id}&amount=${amt}&mode=${mode}`,{
+        method:"POST"
+    });
+
+    alert("Saved");
+    location.reload();
+}
+
+
+async function addDebit(){
+
+    let amt = document.getElementById("amount").value;
+    let note = document.getElementById("note").value;
+
+    if(!amt){
+        alert("Enter amount");
+        return;
+    }
+
+    await fetch(`/add-debit?loan_id=${loan_id}&amount=${amt}&note=${note}`,{
+        method:"POST"
+    });
+
+    alert("Debit Added");
+    location.reload();
+}
+
+
+function goBack(){
+    window.history.back();
+}
+
+function printLedger(){
+    window.print();
+}
+
+load();
+
+// RIGHT CLICK CODE
+let selectedRowId = null;
+
+document.addEventListener("contextmenu", function(e){
+
+    let row = e.target.closest("tr");
+
+    if(!row || !row.dataset.id) return;
+
+    e.preventDefault();
+
+    selectedRowId = row.dataset.id;
+
+    let menu = document.getElementById("contextMenu");
+    menu.style.display = "block";
+    menu.style.left = e.pageX + "px";
+    menu.style.top = e.pageY + "px";
+});
+
+document.addEventListener("click", function(){
+    document.getElementById("contextMenu").style.display = "none";
+});
+
+
+// 🔥 👉 YAHAN SE ADD KARNA HAI 👇👇👇
+
+function editEntry(){
+
+    let row = document.querySelector(`tr[data-id='${selectedRowId}']`);
+
+    if(!row){
+        alert("Row not found");
+        return;
+    }
+
+    let debit = row.children[1].innerText;
+    let credit = row.children[2].innerText;
+    let mode = row.children[3].innerText;
+
+    document.getElementById("editDebit").value = debit;
+    document.getElementById("editCredit").value = credit;
+    document.getElementById("editMode").value = mode;
+
+    document.getElementById("editPopup").style.display = "block";
+}
+
+function closeEdit(){
+    document.getElementById("editPopup").style.display = "none";
+}
+
+async function saveEdit(){
+
+    let debit = document.getElementById("editDebit").value;
+    let credit = document.getElementById("editCredit").value;
+    let mode = document.getElementById("editMode").value;
+
+    await fetch(`/update-transaction?id=${selectedRowId}&debit=${debit}&credit=${credit}&mode=${mode}`,{
+        method:"POST"
+    });
+
+    alert("Updated");
+
+    location.reload();
+}
+
+async function deleteEntry(){
+
+    if(!selectedRowId){
+        alert("No entry selected");
+        return;
+    }
+
+    if(!confirm("Delete this entry?")) return;
+
+    await fetch(`/delete-transaction?id=${selectedRowId}`,{
+        method:"POST"
+    });
+
+    alert("Deleted");
+
+    location.reload();
+}
+
+function openDocs(){
+    document.getElementById("docPopup").style.display = "block";
+}
+
+document.getElementById("docFile").addEventListener("change", function(){
+
+    let newFiles = Array.from(this.files);
+
+    // ✅ add karo (replace nahi)
+    allFiles = allFiles.concat(newFiles);
+
+    let box = document.getElementById("previewBox");
+    box.innerHTML = "";
+
+    if(allFiles.length === 0){
+        box.innerHTML = "<span style='color:#999;'>No Documents</span>";
+        return;
+    }
+
+    allFiles.forEach(file => {
+
+        let reader = new FileReader();
+
+        reader.onload = function(e){
+
+            let img = document.createElement("img");
+            img.src = e.target.result;
+
+            img.style.height = "80px";
+            img.style.borderRadius = "6px";
+            img.style.cursor = "pointer";
+
+            img.ondblclick = function(){
+                let win = window.open("");
+                win.document.write(`<img src="${img.src}" style="width:100%">`);
+            };
+
+            box.appendChild(img);
+        };
+
+        reader.readAsDataURL(file);
+    });
+});
+
+function closeDocs(){
+    document.getElementById("docPopup").style.display = "none";
+}
+
+async function uploadDoc(){
+
+    if(allFiles.length === 0){
+        alert("Select file");
+        return;
+    }
+
+    let formData = new FormData();
+
+    allFiles.forEach(file => {
+        formData.append("files", file);
+    });
+
+    // ✅ loan_id yahan add hua
+    await fetch(`/upload-doc?loan_id=${loan_id}`,{
+        method:"POST",
+        body:formData
+    });
+
+    alert("Uploaded");
+
+    // reset
+    allFiles = [];
+    document.getElementById("previewBox").innerHTML = "<span style='color:#999;'>No Documents</span>";
+    document.getElementById("docFile").value = "";
+}
+
+    // ✅ RESET
+    allFiles = [];
+    document.getElementById("previewBox").innerHTML = "<span style='color:#999;'>No Documents</span>";
+    document.getElementById("docFile").value = "";
+
+// 🔹 Open
+function openDoc(){
+    window.open("/uploads");   // folder open
+}
+
+// 🔹 Delete (basic)
+async function deleteDoc(){
+
+    if(!selectedFile){
+        alert("Select file first");
+        return;
+    }
+
+    if(!confirm("Delete this file?")) return;
+
+    await fetch(`/delete-doc?filename=loan_${loan_id}/${selectedFile}`,{
+        method:"POST"
+    });
+
+    alert("Deleted");
+    selectedFile = null;
+
+    // reload docs
+    openDocs();
+}
+
+async function openDocs(){
+
+    document.getElementById("docPopup").style.display = "block";
+
+    let res = await fetch(`/get-docs?loan_id=${loan_id}`);
+    let data = await res.json();
+
+    let box = document.getElementById("previewBox");
+
+    box.innerHTML = "";
+
+    if(data.files.length === 0){
+        box.innerHTML = "<span style='color:#999;'>No Documents</span>";
+        return;
+    }
+
+    data.files.forEach(file => {
+
+        let img = document.createElement("img");
+
+        img.src = `/uploads/loan_${loan_id}/` + file;
+
+        img.style.height = "80px";
+        img.style.borderRadius = "6px";
+        img.style.cursor = "pointer";
+
+        // double click open full
+        img.ondblclick = function(){
+            window.open(img.src);
+        };
+
+        img.onclick = function(){
+
+            // highlight remove sab se
+            document.querySelectorAll("#previewBox img").forEach(i => {
+                i.style.border = "none";
+            });
+
+            // current select
+            img.style.border = "3px solid red";
+
+            // file save
+            selectedFile = file;
+        };
+
+        box.appendChild(img);
+    });
+}
+
+// open popup + load data
+async function openMember(){
+
+    document.getElementById("memberPopup").style.display = "block";
+
+    let res = await fetch(`/member-details?loan_id=${loan_id}`);
+    let data = await res.json();
+
+    document.getElementById("m_name").value = data.name;
+    document.getElementById("m_father").value = data.father;
+    document.getElementById("m_village").value = data.village;
+    document.getElementById("m_mobile").value = data.mobile;
+    document.getElementById("m_g1").value = data.g1;
+    document.getElementById("m_g2").value = data.g2;
+    document.getElementById("m_amount").value = data.amount;
+    document.getElementById("m_inst").value = data.inst;
+    document.getElementById("m_type").value = data.type;
+    document.getElementById("start_date").value = data.start_date;
+}
+
+// close
+function closeMember(){
+    document.getElementById("memberPopup").style.display = "none";
+}
+
+// save update
+async function saveMember(){
+
+    let name = document.getElementById("m_name").value;
+    let father = document.getElementById("m_father").value;
+    let village = document.getElementById("m_village").value;
+    let mobile = document.getElementById("m_mobile").value;
+
+    await fetch(`/update-member`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            loan_id: loan_id,
+            name: name,
+            father: father,
+            village: village,
+            mobile: mobile,
+            g1: document.getElementById("m_g1").value,
+            g2: document.getElementById("m_g2").value,
+            amount: document.getElementById("m_amount").value,
+            inst: document.getElementById("m_inst").value,
+            type: document.getElementById("m_type").value,
+            start_date: document.getElementById("start_date").value   // ✅ ADD
+        })
+    });
+
+    alert("Updated");
+
+    closeMember();
+    load(); // refresh ledger header
+}
+
+function enableEdit(){
+
+    document.getElementById("m_name").readOnly = false;
+    document.getElementById("m_father").readOnly = false;
+    document.getElementById("m_village").readOnly = false;
+    document.getElementById("m_mobile").readOnly = false;
+    document.getElementById("m_g1").readOnly = false;
+    document.getElementById("m_g2").readOnly = false;
+    document.getElementById("m_amount").readOnly = false;
+    document.getElementById("m_inst").readOnly = false;
+
+    document.getElementById("m_type").disabled = false;
+}
+
+async function closeAccount(){
+
+    // pending amount lo
+    let pending = parseFloat(document.getElementById("pending").innerText);
+
+    // condition check
+    if(pending > 0){
+        alert("Loan not fully paid");
+        return;
+    }
+
+    if(!confirm("Close this account?")) return;
+
+    await fetch(`/close-account?loan_id=${loan_id}`,{
+        method:"POST"
+    });
+
+    alert("Account Closed");
+
+    location.reload();
+}
+
+</script>
+
+</body>
+</html>

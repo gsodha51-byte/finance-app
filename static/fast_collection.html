@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fast Collection</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+
+<body>
+
+<h2 id="title">Loan / DDS Account Ledger</h2>
+
+<!-- TYPE SELECT -->
+<div id="typeSelect" style="text-align:center; margin-top:10px;">
+    
+    <br><br>
+
+    <h3>Loan Account</h3>
+    <button onclick="openType('Daily')">Daily Loan</button><br><br>
+    <button onclick="openType('Monthly')">Monthly Loan</button>
+
+</div>
+
+<div id="summary" style="text-align:center; margin:10px; font-weight:bold;">
+    Loading summary...
+</div>
+
+<!-- TABLE -->
+<div id="tableArea" style="display:none;">
+
+<table border="1" width="100%" cellspacing="0" cellpadding="5">
+<thead id="thead"></thead>
+<tbody id="tbody"></tbody>
+</table>
+
+<br><br>
+
+<!-- BOTTOM BUTTONS -->
+<div style="text-align:center;">
+    <button onclick="openDashboard()" style="background:orange;">
+        Daily Collection
+    </button>
+    <button onclick="bulkPay(this)" style="background:green;color:white;">
+        OK Paid (All)
+    </button>
+    <button style="background:red; color:white;" onclick="deleteMember()">Delete Member</button>
+    <button>Search</button>
+    
+</div>
+
+<br>
+<a href="/">← Back</a>
+
+</div>
+
+
+<script>
+
+let selectedLoanId = null;
+
+
+// 🟢 OPEN TYPE
+function openType(type){
+
+    if(type === "Daily"){
+        window.location.href = "daily_fast_collection.html";
+    }
+    else if(type === "Monthly"){
+        window.location.href = "monthly_fast_collection.html";
+    }
+}
+
+// 🟢 LOAD DATA
+async function load(type){
+
+    let res = await fetch(`/fast-collection?type=${type}`);
+    let data = await res.json();
+
+    data.sort((a, b) => a.account.localeCompare(b.account));
+
+    let header = `
+    <tr>
+        <th>Sr</th>
+        <th>Acc No</th>
+        <th>Name</th>
+        <th>Mobile</th>
+        <th>Loan</th>
+        <th>Inst</th>
+    `;
+
+    let dates = [];
+let today = new Date();
+
+if(type === "Monthly"){
+
+    for(let i=10;i>0;i--){
+        let d = new Date();
+        d.setMonth(today.getMonth() - i);
+
+        let monthNum = d.getMonth();
+        let year = d.getFullYear();
+
+        let monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+        let label = monthNames[monthNum] + " " + year;
+
+        // backend के लिए YYYY-MM चाहिए
+        let value = d.toISOString().slice(0,7);
+
+        dates.push(value);
+
+        // UI के लिए readable label
+        header += `<th>${label}</th>`;
+    }
+
+}else{
+
+    for(let i=10;i>0;i--){
+        let d = new Date();
+        d.setDate(today.getDate() - i);
+
+        let dateStr = d.getFullYear() + "-" + 
+            String(d.getMonth()+1).padStart(2,'0') + "-" + 
+            String(d.getDate()).padStart(2,'0');
+        dates.push(dateStr);
+
+        header += `<th>${dateStr}</th>`;
+    }
+
+}
+
+    header += `<th>Today</th>`;
+
+    if(type === "Monthly"){
+        header += `<th>This Month</th>`;
+    }else{
+        header += `<th>Total</th>`;
+    }
+
+    header += `
+        <th>Pending</th>
+        <th>
+            Pay <br>
+            <input type="text" id="totalPay" value="0" disabled 
+                   style="width:80px; text-align:center;">
+        </th>
+    </tr>
+    `;
+
+   
+    document.getElementById("thead").innerHTML = header;
+
+    let html = "";
+
+    let total = 0;
+
+    data.forEach((d, index) => {
+
+        total += (d.today || 0);
+
+        html += `
+        <tr onclick="selectRow(this, ${d.loan_id})"
+            ondblclick="openLedger(${d.loan_id})">
+            <td>${index + 1}</td>
+            <td>${d.account}</td>
+            <td>${d.name}</td>
+            <td>${d.mobile}</td>
+            <td>${d.loan}</td>
+            <td>${d.inst}</td>
+        `;
+
+        d.last10.forEach(val => {
+            html += `<td>${val}</td>`;
+        });
+
+        html += `
+            <td>${d.today}</td>
+            <td>${d.total}</td>
+            <td style="color:red;">${d.pending}</td>
+            
+            <td>
+                ₹ <input type="number" id="amt_${d.loan_id}" style="width:60px;" oninput="updateTotal()">
+                <select id="mode_${d.loan_id}" style="width:80px;">
+                    <option value="Cash">Cash</option>
+                    <option value="Online">Online</option>
+                </select>
+                <button type="button" onclick="pay(${d.loan_id})">OK</button>
+            </td>
+        </tr>
+        `;
+    });
+
+    document.getElementById("tbody").innerHTML = html;
+
+    document.getElementById("summary").innerText =
+        `Total: ₹${total}`;
+}
+
+
+// 🟢 ROW SELECT
+function selectRow(row, id){
+    document.querySelectorAll("tbody tr").forEach(r=>{
+        r.style.background = "";
+    });
+
+    row.style.background = "#ffeaa7";
+    selectedLoanId = id;
+}
+
+
+// 🟢 DOUBLE CLICK → LEDGER
+function openLedger(id){
+    window.location.href = `/ledger.html?loan_id=${id}`;
+}
+
+
+// 🟢 PAYMENT
+// 🟢 PAYMENT
+async function pay(id){
+
+    let amount = document.getElementById("amt_"+id).value;
+    let mode = document.getElementById("mode_"+id).value;
+
+    if(!amount){
+        alert("Enter amount");
+        return;
+    }
+
+    await fetch(`/collect?loan_id=${id}&amount=${amount}&mode=${mode}`,{
+        method:"POST"
+    });
+
+    // clear input
+    document.getElementById("amt_"+id).value = "";
+
+    // reload
+    load(document.getElementById("title").innerText.includes("Daily") ? "Daily" : "Monthly");
+}
+
+
+// 👇 अलग function (IMPORTANT)
+function updateTotal(){
+
+    let inputs = document.querySelectorAll("input[id^='amt_']");
+    let total = 0;
+
+    inputs.forEach(inp => {
+        let val = parseFloat(inp.value) || 0;
+        total += val;
+    });
+
+    document.getElementById("totalPay").value = total;
+}
+
+async function bulkPay(btn){
+
+    // 🔥 loading दिखाओ
+    btn.innerText = "Processing...";
+    btn.disabled = true;
+
+    let inputs = document.querySelectorAll("input[id^='amt_']");
+
+    for(let i of inputs){
+
+        let id = i.id.split("_")[1];
+        let amt = i.value;
+
+        if(!amt || amt <= 0) continue;
+
+        let mode = document.getElementById("mode_"+id).value;
+
+        await fetch("/collect", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                loan_id: id,
+                amount: amt,
+                mode: mode
+            })
+        });
+    }
+
+    // ✅ done
+    btn.innerText = "Done ✅";
+    
+    setTimeout(()=>{
+        btn.innerText = "OK Paid (All)";
+        btn.disabled = false;
+    },1500);
+
+    load();
+}
+
+// 🟢 DELETE MEMBER
+async function deleteMember(){
+
+    if(!selectedLoanId){
+        alert("Select member first");
+        return;
+    }
+
+    if(!confirm("Delete this member?")) return;
+
+    await fetch(`/delete-member?loan_id=${selectedLoanId}`,{
+        method:"POST"
+    });
+
+    alert("Deleted");
+    location.reload();
+}
+
+
+
+// 🟢 CLOSE POPUP
+function closePopup(){
+    document.getElementById("popup").style.display = "none";
+}
+
+function openDailyPage(){
+    window.location.href = "/daily_collection.html";
+}
+
+function dailyCollection(){
+
+    if(!selectedLoanId){
+        alert("Select member first");
+        return;
+    }
+
+    let amt = prompt("Enter collection amount:");
+
+    if(!amt || amt <= 0){
+        alert("Enter valid amount");
+        return;
+    }
+
+    fetch(`/collect?loan_id=${selectedLoanId}&amount=${amt}&mode=Cash`,{
+        method:"POST"
+    }).then(()=>{
+        alert("Collection Done");
+        location.reload();
+    });
+}
+
+async function showDailyCollection(){
+
+    let res = await fetch("/daily-collection");
+    let data = await res.json();
+
+    let html = "TODAY COLLECTION:\n\n";
+
+    data.data.forEach(d => {
+        html += `${d.account} | ${d.name} | ₹${d.amount} | ${d.mode}\n`;
+    });
+
+    html += "\n------------------\n";
+    html += "TOTAL: ₹" + data.total;
+
+    alert(html);
+}
+
+async function loadSummary(){
+
+    let res = await fetch("/today-summary");
+    let data = await res.json();
+
+    document.getElementById("summary").innerHTML = `
+        DDS: ${data.dds} |
+        Daily: ${data.daily} |
+        Monthly: ${data.monthly} |
+        Total Members: ${data.members} |
+        Total: ₹${data.total} |
+        Cash: ₹${data.cash} |
+        Online: ₹${data.online}
+    `;
+}
+
+function openDashboard(){
+    window.location.href = "/daily_dashboard.html";
+}
+
+window.onload = function(){
+    document.getElementById("tableArea").style.display = "none";
+}
+
+// 🗑️ DELETE DOCUMENT
+async function deleteFile(filename){
+
+    console.log("Deleting:", filename);   // 👈 debug
+
+    if(!filename){
+        alert("No file found ❌");
+        return;
+    }
+
+    if(!confirm("Delete document?")) return;
+
+    await fetch(`/delete-doc?filename=${filename}`,{
+        method:"POST"
+    });
+
+    alert("Deleted ✅");
+    location.reload();
+}
+
+</script>
+
+
+<!-- 🔥 POPUP -->
+<div id="popup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+
+    <div style="background:white; width:300px; margin:100px auto; padding:20px; text-align:center; border-radius:10px;">
+
+        <h3>Select Loan Type</h3>
+
+        <select id="loanTypeSelect" style="width:100%; padding:8px;">
+            <option value="DDS">DDS</option>
+            <option value="Daily">Daily</option>
+            <option value="Monthly">Monthly</option>
+        </select>
+
+        <br><br>
+
+        <button onclick="submitLoanType()" style="background:green; color:white;">
+            OK
+        </button>
+
+        <button onclick="closePopup()" style="background:gray; color:white;">
+            Cancel
+        </button>
+
+    </div>
+
+</div>
+
+</body>
+</html>

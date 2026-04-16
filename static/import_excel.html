@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Import Excel</title>
+
+    <style>
+        body{
+            font-family: Arial;
+            background:#f5f6fa;
+            text-align:center;
+        }
+
+        .box{
+            width:350px;
+            margin:auto;
+            margin-top:40px;
+            padding:15px;
+            border:1px solid #ccc;
+            background:white;
+        }
+
+        button{
+            padding:10px;
+            border:none;
+            border-radius:5px;
+            cursor:pointer;
+            margin-top:10px;
+        }
+
+        table{
+            border-collapse: collapse;
+            width:100%;
+            margin-top:10px;
+        }
+
+        td{
+            border:1px solid #ccc;
+            padding:5px;
+            font-size:12px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>📂 Import Excel</h2>
+
+<div class="box">
+
+    <input type="file" id="excelFile" accept=".xlsx,.xls">
+
+    <br>
+
+    <button onclick="uploadMembersLoan()" style="background:green;color:white;">
+        Upload Members + Loan
+    </button>
+
+    <div id="preview"></div>
+
+    <button onclick="saveData()" style="background:blue;color:white;">
+        Save to Database
+    </button>
+
+</div>
+
+<script>
+
+let excelData = [];
+
+async function uploadExcel(){
+
+    let file = document.getElementById("excelFile").files[0];
+
+    if(!file){
+        alert("Select file first");
+        return;
+    }
+
+    let formData = new FormData();
+    formData.append("file", file);
+
+    let res = await fetch("/preview-excel", {
+        method:"POST",
+        body: formData
+    });
+
+    let data = await res.json();
+
+    excelData = data;
+
+    let html = "<table>";
+
+    data.forEach(row => {
+        html += "<tr>";
+        Object.values(row).forEach(val => {
+            html += `<td>${val}</td>`;
+        });
+        html += "</tr>";
+    });
+
+    html += "</table>";
+
+    document.getElementById("preview").innerHTML = html;
+}
+
+async function saveData(){
+
+    if(excelData.length === 0){
+        alert("No data to save");
+        return;
+    }
+
+    let res = await fetch("/save-excel", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify(excelData)
+    });
+
+    let data = await res.json();
+
+    if(data.status === "ok"){
+        alert("✅ Data Saved");
+    }else{
+        alert("❌ Error");
+    }
+}
+
+async function uploadMembersLoan(){
+
+    let file = document.getElementById("excelFile").files[0];
+
+    if(!file){
+        alert("Select file first");
+        return;
+    }
+
+    let formData = new FormData();
+    formData.append("file", file);
+
+    let res = await fetch("/import-members-loan", {
+        method:"POST",
+        body: formData
+    });
+
+    let data = await res.json();
+
+    if(data.status === "ok"){
+        alert("✅ Imported: " + data.inserted + " records");
+    }else{
+        alert("❌ Error");
+    }
+}
+
+</script>
+
+</body>
+</html>

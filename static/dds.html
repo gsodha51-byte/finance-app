@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DDS</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <style>
+        body { font-family: Arial; text-align:center; background:#f5f5f5; }
+
+        .box {
+            width:300px;
+            margin:auto;
+            margin-top:60px;
+            background:white;
+            padding:20px;
+            border-radius:10px;
+            box-shadow:0 0 10px rgba(0,0,0,0.1);
+        }
+
+        button {
+            width:100%;
+            padding:12px;
+            margin:10px 0;
+            font-size:16px;
+            border:none;
+            border-radius:5px;
+            cursor:pointer;
+        }
+
+        .add { background:green; color:white; }
+        .collect { background:#2196F3; color:white; }
+    </style>
+</head>
+
+<body>
+
+<h2>💰 DDS</h2>
+
+<div class="box">
+
+    <button class="add" onclick="go('dds_add.html')">
+        ➕ Add Member
+    </button>
+
+    <button class="collect" onclick="go('dds_fast_collection.html')">
+        💰 DDS Fast Collection
+    </button>
+
+</div>
+
+<br>
+<a href="/">← Back</a>
+
+<script>
+function go(p){
+    window.location.href = p;
+}
+</script>
+
+</body>
+</html>

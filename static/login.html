@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <style>
+        body{
+            font-family: Arial;
+            text-align:center;
+            margin-top:100px;
+        }
+        input{
+            padding:10px;
+            margin:5px;
+            width:200px;
+        }
+        button{
+            padding:10px;
+            width:220px;
+            background:green;
+            color:white;
+            border:none;
+        }
+    </style>
+</head>
+<body>
+
+<h2>🔐 Login</h2>
+
+<div style="width:240px; margin:auto;">
+
+    <!-- Username -->
+    <input type="text" id="username" placeholder="Username"
+        style="width:100%; padding:10px; margin-bottom:10px; box-sizing:border-box;">
+
+    <!-- Password -->
+    <div style="position:relative; width:100%; margin-bottom:10px;">
+        
+        <input type="password" id="password" placeholder="Password"
+            style="width:100%; padding:10px 40px 10px 10px; box-sizing:border-box;">
+
+        <span onclick="togglePassword()" 
+            style="position:absolute; right:10px; top:0; height:100%; display:flex; align-items:center; cursor:pointer;">
+            👁️
+        </span>
+
+    </div>
+
+    <!-- Button -->
+    <button onclick="login()" 
+        style="width:100%; padding:10px; background:green; color:white; border:none;">
+        Login
+    </button>
+    <div style="text-align:right; margin-top:8px;">
+        <a href="#" onclick="forgotPassword()" style="font-size:13px; color:#2980b9;">
+            Forgot Password?
+        </a>
+    </div>
+
+</div>
+
+<script>
+async function login(){
+
+    let username = document.getElementById("username").value;
+    let password = document.getElementById("password").value;
+
+    let res = await fetch("/login", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({username, password})
+    });
+
+    let data = await res.json();
+
+    console.log("LOGIN RESPONSE:", data);
+
+    if(data.status === "ok"){
+        localStorage.setItem("login", "yes");
+        localStorage.setItem("role", data.role);
+        localStorage.setItem("username", data.username);
+        window.location.href = "/";
+    }
+    else{
+        alert("Invalid login");
+    }
+}
+
+function togglePassword(){
+    let pass = document.getElementById("password");
+
+    if(pass.type === "password"){
+        pass.type = "text";
+    }else{
+        pass.type = "password";
+    }
+}
+
+async function forgotPassword(){
+
+    let username = document.getElementById("username").value;
+
+    if(!username){
+        alert("Enter username first");
+        return;
+    }
+
+    // OTP send करो
+    let res = await fetch("/send-otp", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({username})
+    });
+
+    let data = await res.json();
+
+    if(data.status === "otp sent"){
+        alert("OTP sent to your registered email");
+
+        // username save कर लो
+        localStorage.setItem("username", username);
+
+        // simple prompt (basic तरीका)
+        let otp = prompt("Enter OTP:");
+        let new_password = prompt("Enter New Password:");
+
+        if(!otp || !new_password){
+            alert("All fields required");
+            return;
+        }
+
+        let res2 = await fetch("/change-password", {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({
+                username,
+                old_password: "",   // empty (forgot case)
+                otp,
+                new_password
+            })
+        });
+
+        let data2 = await res2.json();
+
+        if(data2.status === "ok"){
+            alert("✅ Password Reset Successfully");
+        }else{
+            alert("❌ " + data2.msg);
+        }
+
+    }else{
+        alert("❌ " + data.msg);
+    }
+}
+
+</script>
+
+</body>
+</html>

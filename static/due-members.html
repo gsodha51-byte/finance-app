@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Due Members</title>
+
+    <style>
+        body{
+            font-family: Arial;
+            background:#f5f6fa;
+            text-align:center;
+        }
+
+        table{
+            width:80%;
+            margin:20px auto;
+            border-collapse:collapse;
+            background:white;
+        }
+
+        th, td{
+            border:1px solid #ccc;
+            padding:8px;
+        }
+
+        th{
+            background:#2c3e50;
+            color:white;
+        }
+
+        select, button{
+            padding:6px;
+            margin:10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>📋 Due Members</h2>
+
+<select id="days">
+    <option value="1">1 Day</option>
+    <option value="2">2 Days</option>
+    <option value="3">3 Days</option>
+    <option value="4">4 Days</option>
+    <option value="5">5 Days</option>
+    <option value="6">6 Days</option>
+    <option value="7">7 Days</option>
+    <option value="8">8 Days</option>
+    <option value="9">9 Days</option>
+    <option value="10">10 Days</option>
+    <option value="11">11 Days</option>
+    <option value="12">12 Days</option>
+    <option value="13">13 Days</option>
+    <option value="14">14 Days</option>
+    <option value="15">15 Days</option>
+    <option value="old">Old Due (15+)</option>
+</select>
+
+<button onclick="loadDue()">Load</button>
+
+<table>
+<thead>
+<tr>
+    <th>Account</th>
+    <th>Name</th>
+    <th>Mobile</th>
+    <th>Last Paid</th>
+</tr>
+</thead>
+
+<tbody id="tbody"></tbody>
+</table>
+
+<br>
+<a href="daily_menu.html">← Back</a>
+
+<script>
+
+async function loadDue(){
+
+    let days = document.getElementById("days").value;
+
+    let res = await fetch(`/due-members?days=${days}`);
+    let data = await res.json();
+
+    let html = "";
+
+    // ✅ पहले check
+    if(data.length === 0){
+        html = `
+        <tr>
+            <td colspan="4" style="color:red; font-weight:bold;">
+                ❌ No Data Found
+            </td>
+        </tr>
+        `;
+    } 
+    else {
+        data.forEach(d => {
+            html += `
+            <tr>
+                <td>${d.account}</td>
+                <td>${d.name}</td>
+                <td>${d.mobile}</td>
+                <td>${d.last_paid || "-"}</td>
+            </tr>
+            `;
+        });
+    }
+
+    document.getElementById("tbody").innerHTML = html;
+}
+
+</script>
+
+</body>
+</html>

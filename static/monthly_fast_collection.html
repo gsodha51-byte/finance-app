@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Monthly Loan Collection</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+<style>
+table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+}
+
+th, td{
+    border:1px solid #ccc;
+    padding:5px;
+    text-align:center;
+}
+
+th{
+    background:#e67e22;
+    color:white;
+}
+
+tr.selected{
+    background:#ffeaa7 !important;
+}
+
+input{ width:60px; }
+
+.pending{ color:red; }
+
+button {
+    padding: 6px 12px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+/* 🟢 hover effect */
+button:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+}
+
+/* 🔥 click effect */
+button:active {
+    transform: scale(0.95);
+    background-color: black !important;
+    color: white !important;
+}
+
+</style>
+</head>
+
+<body>
+
+<h2>📆 Monthly Loan Collection</h2>
+
+<div id="summary" style="text-align:center; font-weight:bold;"></div>
+
+<table>
+<thead id="thead"></thead>
+<tbody id="tbody"></tbody>
+</table>
+
+<br>
+
+<!-- 🔥 BOTTOM BUTTONS -->
+<div style="text-align:center;">
+    <button onclick="openDashboard()" style="background:orange;">
+        Daily Collection
+    </button>
+
+    <button onclick="bulkPay()" style="background:green;color:white;">
+        OK Paid (All)
+    </button>
+
+    <button onclick="deleteMember()" style="background:red;color:white;">
+        Delete Member
+    </button>
+
+    <button onclick="search()">Search</button>
+</div>
+
+<br>
+<button onclick="goBack()">⬅ Back</button>
+
+<script>
+
+let selectedLoanId = null;
+
+// 🔥 LOAD
+async function load(){
+
+    let res = await fetch("/fast-collection?type=Monthly");
+    let data = await res.json();
+
+    // HEADER
+    let header = `
+    <tr>
+        <th>Sr</th>
+        <th>Acc</th>
+        <th>Name</th>
+        <th>Mobile</th>
+        <th>Loan</th>
+        <th>Inst</th>
+        <th>Start Date</th>
+    `;
+
+    let today = new Date();
+    let months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+    for(let i=10;i>0;i--){
+        let d = new Date();
+        d.setMonth(today.getMonth() - i);
+
+        let label = months[d.getMonth()] + " " + d.getFullYear();
+
+        header += `<th>${label}</th>`;
+    }
+
+    header += `
+        <th>This Month</th>
+        <th>Total</th>
+        <th>Expected</th>
+        <th>Pending</th>
+        <th>Pay</th>
+    </tr>
+    `;
+
+    document.getElementById("thead").innerHTML = header;
+
+    // BODY
+    let html = "";
+
+    let total = 0;
+
+    data.forEach((d, index)=>{
+
+        total += (d.today || 0);
+
+        html += `
+        <tr onclick="selectRow(this, ${d.loan_id})"
+            ondblclick="openLedger(${d.loan_id})"
+            style="cursor:pointer;">
+
+            <td>${index+1}</td>
+            <td>${d.account}</td>
+            <td>${d.name}</td>
+            <td>${d.mobile}</td>
+            <td>${d.loan}</td>
+            <td>${d.inst}</td>
+            <td>${d.start_date}</td>
+        `;
+
+        d.last10.forEach(v=>{
+            html += `<td>${v}</td>`;
+        });
+
+        html += `
+            <td>${d.today}</td>
+            <td>${d.total}</td>
+            <td>${d.expected}</td>   <!-- ✅ ADD -->
+            <td class="pending">${d.pending}</td>
+
+            <td>
+                ₹ <input type="number" id="amt_${d.loan_id}">
+                <select id="mode_${d.loan_id}">
+                    <option value="Cash">Cash</option>
+                    <option value="Online">Online</option>
+                </select>
+                <button onclick="pay(${d.loan_id})">OK</button>
+            </td>
+        </tr>
+        `;
+    });
+
+    document.getElementById("tbody").innerHTML = html;
+
+    let res2 = await fetch("/loan-month-summary");
+    let s = await res2.json();
+
+    document.querySelector("h2").innerText =
+    `📆 Monthly Loan Collection
+
+    Cash → CR: ₹${s.cash_cr || 0} | DR: ₹${s.cash_dr || 0}
+    Bank → CR: ₹${s.bank_cr || 0} | DR: ₹${s.bank_dr || 0}`;
+    }
+
+// 🔥 ROW SELECT
+function selectRow(row, id){
+
+    document.querySelectorAll("tbody tr").forEach(r=>{
+        r.classList.remove("selected");
+    });
+
+    row.classList.add("selected");
+    selectedLoanId = id;
+}
+
+// 🔥 DOUBLE CLICK → LEDGER
+function openLedger(id){
+    window.location.href = `/ledger.html?loan_id=${id}`;
+}
+
+// 🔥 PAYMENT
+async function pay(id){
+
+    let amt = document.getElementById("amt_"+id).value;
+    let mode = document.getElementById("mode_"+id).value;
+
+    if(!amt || amt <= 0){
+        alert("Amount daalo");
+        return;
+    }
+
+    let res = await fetch("/collect", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            loan_id: id,
+            amount: amt,
+            mode: mode
+        })
+    });
+
+    let data = await res.json();
+
+    // ✅ success check
+    if(data.status === "ok"){
+        alert("✅ Payment Success");
+
+        // 🔥 input clear
+        document.getElementById("amt_"+id).value = "";
+
+        // 🔥 table reload
+        load();
+    }
+}
+
+// 🔥 BULK PAY
+async function bulkPay(){
+
+    let inputs = document.querySelectorAll("input[id^='amt_']");
+
+    for(let i of inputs){
+
+        let id = i.id.split("_")[1];
+        let amt = i.value;
+
+        if(!amt || amt <= 0) continue;
+
+        let mode = document.getElementById("mode_"+id).value;
+
+        await fetch("/collect", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                loan_id: id,
+                amount: amt,
+                mode: mode
+            })
+        });
+    }
+
+    alert("✅ All Payment Done");
+    load();
+}
+
+// 🔥 DELETE
+async function deleteMember(){
+
+    if(!selectedLoanId){
+        alert("Select row first");
+        return;
+    }
+
+    if(!confirm("Delete this member?")) return;
+
+    await fetch(`/delete-member?loan_id=${selectedLoanId}`,{
+        method:"POST"
+    });
+
+    load();
+}
+
+// 🔥 OPEN DASHBOARD
+function openDashboard(){
+    window.location.href = "daily_dashboard.html";
+}
+
+// 🔍 SEARCH
+function search(){
+    let name = prompt("Enter name");
+
+    if(!name) return;
+
+    document.querySelectorAll("tbody tr").forEach(r=>{
+        if(r.innerText.toLowerCase().includes(name.toLowerCase())){
+            r.style.display = "";
+        }else{
+            r.style.display = "none";
+        }
+    });
+}
+
+// 🔙 BACK
+function goBack(){
+    window.history.back();
+}
+
+load();
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Daily Collection</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+
+<body>
+
+<h2 style="text-align:center;">Daily Collection</h2>
+
+<div style="text-align:center; margin-bottom:15px;">
+    Select Date:
+    <input type="date" id="date" onchange="load()">
+</div>
+
+<table border="1" width="100%" cellpadding="5">
+<thead>
+<tr>
+    <th>Account</th>
+    <th>Member</th>
+    <th>Mobile</th>
+    <th>Amount</th>
+    <th>Mode</th>
+</tr>
+</thead>
+
+<tbody id="tbody"></tbody>
+</table>
+
+<br>
+
+<div style="text-align:center;">
+    <b>Total Collection: </b><span id="total"></span><br>
+    <b>Cash: </b><span id="cash"></span><br>
+    <b>Bank: </b><span id="bank"></span>
+</div>
+
+<br>
+
+<div style="text-align:center;">
+    <button onclick="goBack()">Back</button>
+</div>
+
+<script>
+
+async function load(){
+
+    let date = document.getElementById("date").value;
+
+    let url = "/daily-collection";
+    if(date){
+        url += "?date=" + date;
+    }
+
+    let res = await fetch(url);
+    let data = await res.json();
+
+    let html = "";
+    let cash = 0;
+    let bank = 0;
+
+    data.data.forEach(d => {
+
+        html += `
+        <tr>
+            <td>${d.account}</td>
+            <td>${d.name}</td>
+            <td>${d.mobile}</td>
+            <td>${d.amount}</td>
+            <td>${d.mode}</td>
+        </tr>
+        `;
+
+        if(d.mode === "Cash") cash += d.amount;
+        else bank += d.amount;
+    });
+
+    document.getElementById("tbody").innerHTML = html;
+    document.getElementById("total").innerText = data.total;
+    document.getElementById("cash").innerText = cash;
+    document.getElementById("bank").innerText = bank;
+    document.getElementById("date").value = new Date().toISOString().split("T")[0];
+}
+   
+function goBack(){
+    window.history.back();
+}
+
+load();
+
+</script>
+
+</body>
+</html>

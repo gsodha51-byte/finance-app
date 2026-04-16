@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+<head>
+<title>Add Member</title>
+
+<style>
+body {
+    font-family: Arial;
+    text-align:center;
+    background:#f5f5f5;
+}
+
+.box {
+    width:350px;
+    margin:auto;
+}
+
+input {
+    width:100%;
+    padding:8px;
+    margin:5px 0;
+}
+
+button {
+    width:100%;
+    padding:10px;
+    margin-top:10px;
+    color:white;
+    border:none;
+    cursor:pointer;
+    border-radius:5px;
+}
+
+.main-btn { background:#444; }
+.saving-btn { background:green; }
+.loan-btn { background:blue; }
+.type-btn { background:#666; }
+</style>
+</head>
+
+<body>
+
+<h2 id="title">Select Account Type</h2>
+
+<!-- FORM -->
+<div class="box" id="formArea" style="display:none;"></div>
+
+<br>
+<a href="/">⬅ Back</a>
+
+<script>
+
+// STEP 1
+
+function showLoan(){
+    document.getElementById("mainSelect").style.display = "none";
+    document.getElementById("loanTypeSection").style.display = "block";
+    document.getElementById("title").innerText = "Select Loan Type";
+}
+
+// STEP 2/3
+function selectType(type){
+
+    selectedType = type;
+    
+    document.getElementById("loanTypeSection").style.display = "none";
+
+    document.getElementById("title").innerText = "Add " + type + " Member";
+
+    buildForm(type);
+}
+
+// FORM
+function buildForm(type){
+
+    let html = `
+    <input id="mobile1" placeholder="Mobile" onblur="checkMember()">
+    <input id="name" placeholder="Name">
+    <input id="father" placeholder="Father">
+    <input id="village" placeholder="Village">
+    <input id="mobile2" placeholder="Mobile 2">
+    `;
+
+    
+    // Loan (Daily / Monthly)
+    if(type === "Daily" || type === "Monthly"){
+        html += `
+        <input id="g1" placeholder="Guarantor 1">
+        <input id="g1m" placeholder="Guarantor1 Mobile">
+        <input id="g2" placeholder="Guarantor 2">
+        <input id="g2m" placeholder="Guarantor2 Mobile">
+        <input type="date" id="start_date">
+
+        <input id="principal" placeholder="Principal Amount" oninput="autoCalc()">
+        <input id="interest" placeholder="Interest" oninput="autoCalc()">
+        <input id="total" placeholder="Total Loan" readonly>
+        <input id="inst" placeholder="Installment" oninput="autoCalc()">
+        <input id="duration" placeholder="Duration (${type === 'Daily' ? 'Days' : 'Months'})" readonly>
+       
+        `;
+    }
+
+    // ✅ SAVE BUTTON (fix)
+    html += `
+        <div style="margin-top:15px;">
+            <button onclick="save()" style="background:green;">
+                Save Member
+            </button>
+        </div>
+    `;
+
+    document.getElementById("formArea").innerHTML = html;
+    document.getElementById("formArea").style.display = "block";
+}
+// SAVE
+async function save(){
+
+    let data = {
+        name: document.getElementById("name").value,
+        father: document.getElementById("father").value,
+        village: document.getElementById("village").value,
+        mobile: document.getElementById("mobile1").value,
+
+        // ✅ NEW FIELDS ADD
+        g1: document.getElementById("g1")?.value || "",
+        g2: document.getElementById("g2")?.value || "",
+        g1m: document.getElementById("g1m")?.value || "",
+        g2m: document.getElementById("g2m")?.value || "",
+
+        amount: document.getElementById("amount")?.value || 0,
+        inst: document.getElementById("inst")?.value || 0,
+
+        start_date: document.getElementById("start_date")?.value || "",
+
+        type: selectedType
+        
+    };
+
+    let url = "/add-full-member";
+    
+    let res = await fetch(url,{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body: JSON.stringify(data)
+    });
+
+    let result = await res.json();
+
+    alert("Member Added ✅");
+    location.reload();
+}
+
+// AUTO CALC
+function autoCalc(){
+
+    let p = document.getElementById("principal");
+    let i = document.getElementById("interest");
+    let inst = document.getElementById("inst");
+
+    if(!p || !i || !inst) return;
+
+    let principal = parseFloat(p.value) || 0;
+    let interest = parseFloat(i.value) || 0;
+    let installment = parseFloat(inst.value) || 0;
+
+    let total = principal + interest;
+
+    let totalBox = document.getElementById("total");
+    let durationBox = document.getElementById("duration");
+
+    if(totalBox) totalBox.value = total;
+
+    if(installment > 0 && durationBox){
+        durationBox.value = (total / installment).toFixed(0);
+    }
+}
+
+async function checkMember(){
+
+    let mobile = document.getElementById("mobile1").value;
+
+    if(!mobile) return;
+
+    let res = await fetch(`/find-member?mobile=${mobile}`);
+    let data = await res.json();
+
+    if(data.found){
+
+        document.getElementById("name").value = data.name;
+        document.getElementById("father").value = data.father;
+        document.getElementById("village").value = data.village;
+        document.getElementById("start_date").value = data.start_date;
+
+        // 🔒 lock fields (optional)
+        document.getElementById("name").readOnly = true;
+        document.getElementById("father").readOnly = true;
+       document.getElementById("village").readOnly = true;
+    }
+    
+    else{
+        document.getElementById("name").value = "";
+        document.getElementById("father").value = "";
+        document.getElementById("village").value = "";
+
+        document.getElementById("name").readOnly = false;
+        document.getElementById("father").readOnly = false;
+        document.getElementById("village").readOnly = false;
+    }
+}
+
+const params = new URLSearchParams(window.location.search);
+let selectedType = params.get("type") || "Daily";
+
+// direct form load
+window.onload = function(){
+    document.getElementById("title").innerText = "Add " + selectedType + " Member";
+    buildForm(selectedType);
+};
+
+</script>
+
+</body>
+</html>

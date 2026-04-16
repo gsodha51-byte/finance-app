@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DDS Ledger</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <style>
+    body{
+    font-family: Arial;
+    background:#eef2f7;
+}
+
+.container{
+    width:900px;
+    margin:20px auto;
+    background:white;
+    padding:15px;
+    border-radius:8px;
+    box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+.title{
+    font-size:20px;
+    font-weight:bold;
+    margin-bottom:10px;
+}
+
+.info{
+    font-size:13px;
+    margin-bottom:10px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th{
+    background:#2f3e4e;
+    color:white;
+    padding:6px;
+    font-size:12px;
+}
+
+td{
+    padding:6px;
+    font-size:12px;
+    text-align:center;
+}
+
+tr:nth-child(even){
+    background:#f2f4f7;
+}
+
+.debit{ color:red; }
+.credit{ color:green; }
+.balance{ text-align:right; font-weight:bold; }
+
+/* BUTTONS */
+.btn{
+    padding:6px 10px;
+    border:none;
+    color:white;
+    font-size:12px;
+    cursor:pointer;
+    border-radius:3px;
+}
+
+.green{ background:#28a745; }
+.blue{ background:#007bff; }
+.purple{ background:#6f42c1; }
+.red{ background:#dc3545; }
+.orange{ background:#f39c12; }
+.gray{ background:#6c757d; }
+
+input, select{
+    padding:5px;
+    font-size:12px;
+    margin:3px;
+}
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="title">DDS Ledger</div>
+
+<div class="info" id="info"></div>
+
+<table>
+<thead>
+<tr>
+    <th>Date</th>
+    <th>Debit</th>
+    <th>Credit</th>
+    <th>Mode</th>
+    <th>Narration</th>
+    <th>Balance</th>
+</tr>
+</thead>
+
+<tbody id="tbody"></tbody>
+</table>
+
+<br><br>
+
+Date:
+<input type="date" id="date">
+
+Install Amount:
+<input type="number" id="amt">
+
+<select id="mode">
+    <option>Cash</option>
+    <option>Online</option>
+</select>
+
+<button class="btn green" onclick="saveDDS()">Save Installment</button>
+
+Narration:
+<input type="text" id="nar">
+
+<div style="text-align:center; margin-top:10px;">
+    <button class="btn orange" onclick="addDebit()">Add Debit</button>
+</div>
+
+<br><br>
+
+<div style="text-align:center; margin-top:15px;">
+    <button class="btn blue" onclick="window.print()">Print Ledger</button>    
+    <button class="btn red" onclick="closeDDS()">Close Account</button>
+</div>
+
+<br><br>
+
+<div style="text-align:center; font-size:13px;">
+    Total Collection: <b id="total"></b><br>
+    Pending: <b id="pending"></b>
+</div>
+
+<br>
+
+<div style="text-align:center;">
+    <button class="btn gray" onclick="goBack()">Close</button>
+</div>
+
+<!-- RIGHT CLICK MENU -->
+<div id="menu" style="display:none; position:absolute; background:white; border:1px solid #ccc;">
+    <div onclick="editEntry()">Edit Entry</div>
+    <div onclick="deleteEntry()">Delete Entry</div>
+</div>
+
+<!-- EDIT POPUP -->
+<div id="editPopup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+
+    <div style="background:white; width:300px; margin:100px auto; padding:20px; text-align:center; border-radius:10px;">
+
+        <h3>Edit Entry</h3>
+
+        Debit:<br>
+        <input type="number" id="editDebit"><br><br>
+
+        Credit:<br>
+        <input type="number" id="editCredit"><br><br>
+
+        Mode:<br>
+        <select id="editMode">
+            <option value="Cash">Cash</option>
+            <option value="Online">Online</option>
+        </select>
+
+        <br><br>
+
+        <button onclick="saveEdit()">Save</button>
+        <button onclick="closeEdit()">Cancel</button>
+
+    </div>
+</div>
+
+<script>
+
+let dds_id = new URLSearchParams(window.location.search).get("dds_id");
+let selectedId = null;
+
+async function load(){
+
+    let res = await fetch(`/dds-ledger?dds_id=${dds_id}`);
+    let data = await res.json();
+
+    let balance = 0;
+    let total = 0;
+
+    let html = "";
+
+    // START ROW
+    html += `
+    <tr>
+        <td>START</td>
+        <td class="debit">0</td>
+        <td class="credit">0</td>
+        <td>-</td>
+        <td>Opening</td>
+        <td class="balance">0</td>
+    </tr>
+    `;
+
+    data.forEach(r => {
+
+        let debit = 0;
+        let credit = 0;
+
+        if(r.amount > 0){
+            debit = r.amount;     // 🔥 collection = debit
+        }else{
+            credit = Math.abs(r.amount);   // 🔥 payment = credit
+        }
+
+        balance += (credit - debit);
+        total += (credit - debit);
+
+        html += `
+        <tr data-id="${r.id}">
+            <td>${r.date}</td>
+            <td class="debit">${debit}</td>
+            <td class="credit">${credit}</td>
+            <td>${r.mode}</td>
+            <td>DDS Collection</td>
+            <td class="balance">${balance}</td>
+        </tr>
+        `;
+    });
+
+    document.getElementById("tbody").innerHTML = html;
+
+    // ✅ MEMBER DATA FETCH (ये missing था)
+    let res2 = await fetch(`/dds-member?dds_id=${dds_id}`);
+    let m = await res2.json();
+
+    document.getElementById("info").innerHTML =
+    `
+    <b>Name:</b> ${m.name}<br>
+    <b>Account No:</b> DDS-${dds_id}<br>
+    <b>Mobile:</b> ${m.mobile} |
+    <b>Total:</b> ${m.total}
+    <br><br>
+    Total Collection: ${total}
+    Pending: ${m.total - total}
+    `;
+
+    // 👇 YE LINE ALAG LIKHO (string ke bahar)
+    document.getElementById("total").innerText = total;
+    document.getElementById("pending").innerText = m.total - total;
+
+}
+
+function goBack(){
+    window.history.back();
+}
+
+// RIGHT CLICK
+document.addEventListener("contextmenu", function(e){
+
+    let row = e.target.closest("tr[data-id]");
+
+    if(!row || !row.dataset.id) return;
+
+    e.preventDefault();
+
+    selectedId = row.dataset.id;
+
+    let menu = document.getElementById("menu");
+    menu.style.display = "block";
+    menu.style.left = e.pageX + "px";
+    menu.style.top = e.pageY + "px";
+});
+
+document.addEventListener("click", function(){
+    document.getElementById("menu").style.display = "none";
+});
+
+// EDIT
+function editEntry(){
+
+    let row = document.querySelector(`tr[data-id='${selectedId}']`);
+
+    let credit = row.children[2].innerText;
+
+    document.getElementById("editDebit").value = 0;
+    document.getElementById("editCredit").value = credit;
+    document.getElementById("editMode").value = "Cash";
+
+    document.getElementById("editPopup").style.display = "block";
+}
+
+function closeEdit(){
+    document.getElementById("editPopup").style.display = "none";
+}
+
+async function saveEdit(){
+
+    let credit = document.getElementById("editCredit").value;
+
+    await fetch("/update-dds", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            id: selectedId,
+            amount: credit
+        })
+    });
+
+    location.reload();
+}
+
+// DELETE
+async function deleteEntry(){
+
+    if(!selectedId){
+        alert("❌ No entry selected");
+        return;
+    }
+
+    if(!confirm("Delete entry?")) return;
+
+    await fetch("/delete-dds", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            id: selectedId
+        })
+    });
+
+    alert("Deleted");
+
+    location.reload();
+}
+
+load();
+
+async function saveDDS(){
+
+    let amt = document.getElementById("amt").value;
+
+    await fetch("/dds-collect", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            dds_id: dds_id,
+            amount: amt,
+            mode: document.getElementById("mode").value   // 🔥 ADD THIS
+        })
+    });
+
+    location.reload();
+}
+
+// 🔥 ADD DEBIT
+async function addDebit(){
+
+    let amt = document.getElementById("amt").value;
+
+    if(!amt){
+        alert("Enter amount");
+        return;
+    }
+
+    await fetch("/add-dds-debit",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            dds_id: dds_id,
+            amount: amt
+        })
+    });
+
+    location.reload();
+}
+
+
+// 🔥 CLOSE DDS ACCOUNT
+async function closeDDS(){
+
+    if(!confirm("Account close karna hai?")) return;
+
+    await fetch("/close-dds",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            dds_id: dds_id
+        })
+    });
+
+    alert("Account Closed");
+
+    window.location.href = "/dds_fast_collection.html";
+}
+
+</script>
+
+</body>
+</html>

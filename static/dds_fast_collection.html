@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DDS Fast Collection</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <style>
+
+    table{
+        width:90%;
+        margin:auto;
+        border-collapse:collapse;
+        font-size:14px;
+    }
+
+    th, td{
+        text-align:center;
+        padding:5px;
+    }
+
+    th{
+        background:#f0f0f0;
+    }
+
+    input[type="number"]{
+        width:60px;
+        padding:3px;
+    }
+
+    button{
+        padding:3px 6px;
+        font-size:12px;
+    }
+
+    tr.selected{
+        background:#d0ebff !important;
+    }
+
+    button {
+    transition: 0.2s;
+    }
+
+    button:hover {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+
+    button:active {
+        transform: scale(0.95);
+        background: #555 !important;
+    }
+    </style>
+</head>
+
+<body>
+
+<h2>DDS Fast Collection</h2>
+
+<div id="summary" style="text-align:center; margin:10px; font-weight:bold;">
+    Loading summary...
+</div>
+
+<div>
+
+<table border="1" width="100%" cellspacing="0" cellpadding="5">
+<thead>
+<tr>
+    <th style="width:5%;">Sr</th>
+    <th style="width:15%;">Account</th>
+    <th style="width:20%;">Name</th>
+    <th style="width:20%;">Mobile</th>
+    <th style="width:15%;">Total</th>
+    <th style="width:10%;">Today</th>
+
+    <th style="width:25%; text-align:center;">
+        Pay <br>
+        <input type="text" id="totalPay" value="0" disabled 
+               style="width:70px; text-align:center;">
+    </th>
+</tr>
+</thead>
+
+<tbody id="tbody"></tbody>
+</table>
+
+<br><br>
+
+<div style="text-align:center;">
+    <button onclick="bulkPay()" style="background:green; color:white;">
+        OK Paid (All)
+    </button>
+    <button style="background:red; color:white;" onclick="deleteMember()">
+        Delete Member
+    </button>
+</div>
+
+<br>
+<a href="/">← Back</a>
+
+</div>
+
+<script>
+
+// 🔥 LOAD DDS DATA
+async function loadDDS(){
+
+    let res = await fetch("/dds-list");
+    let data = await res.json();
+
+    let html = "";
+
+    data.forEach((d, index) => {
+
+        html += `
+        <tr onclick="selectRow(this, ${d.id})" 
+            ondblclick="openDDSLedger(${d.id})"
+            style="cursor:pointer;">
+            <td>${index+1}</td>
+            <td>DDS-${d.id}</td>
+            <td>${d.name}</td>
+            <td>${d.mobile}</td>
+            <td>${d.paid}</td>
+            <td style="color:green; font-weight:bold;">
+                ${d.today || 0}
+            </td>
+            <td>
+                ₹ <input type="number" id="amt_${d.id}" style="width:60px;">
+
+                <select id="mode_${d.id}" style="width:80px;">
+                    <option value="Cash">Cash</option>
+                    <option value="Online">Online</option>
+                </select>
+
+                <button onclick="pay(${d.id})">OK</button>
+            </td>
+        </tr>
+        `;
+    });
+
+    // 🔥 THIS WAS MISSING
+    document.getElementById("tbody").innerHTML = html;
+
+    let res2 = await fetch("/dds-today-summary");
+    let s = await res2.json();
+
+    document.getElementById("summary").innerHTML = `
+    DDS Today:<br>
+    Cash → CR: ₹${s.cash_cr || 0} | DR: ₹${s.cash_dr || 0} <br>
+    Bank → CR: ₹${s.bank_cr || 0} | DR: ₹${s.bank_dr || 0}
+    `;
+}
+
+// 🔥 SINGLE PAYMENT
+async function pay(id){
+
+    let amt = document.getElementById("amt_"+id).value;
+    let mode = document.getElementById("mode_"+id).value;
+
+    if(!amt){
+        alert("Enter amount");
+        return;
+    }
+
+    await fetch("/dds-collect",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            dds_id: id,
+            amount: amt,
+            mode: mode
+        })
+    });
+
+    loadDDS();
+}
+
+
+// 🔥 BULK PAYMENT
+async function bulkPay(){
+
+    let btn = event.target;
+    btn.innerText = "Processing...";
+    btn.disabled = true;
+
+    let inputs = document.querySelectorAll("input[id^='amt_']");
+    let promises = [];
+
+    for(let i of inputs){
+        let id = i.id.split("_")[1];
+        let amt = parseFloat(i.value);
+
+        if(!amt || amt <= 0) continue;
+
+        let mode = document.getElementById("mode_"+id).value;
+
+        promises.push(
+            fetch("/dds-collect",{
+                method:"POST",
+               headers:{"Content-Type":"application/json"},
+                body: JSON.stringify({
+                    dds_id: id,
+                    amount: amt,
+                    mode: mode
+                })
+            })
+        );
+    }
+
+    await Promise.all(promises);
+
+    btn.innerText = "OK Paid (All)";
+    btn.disabled = false;
+
+    alert("✅ Done");
+    loadDDS();
+}
+
+// 🔥 TOTAL CALC
+function updateTotal(){
+
+    let inputs = document.querySelectorAll("input[id^='amt_']");
+    let total = 0;
+
+    inputs.forEach(i => {
+        total += parseFloat(i.value) || 0;
+    });
+
+    document.getElementById("totalPay").value = total;
+}
+
+
+// 🔥 SUMMARY
+async function loadSummary(){
+
+    let res = await fetch("/today-summary");
+    let data = await res.json();
+
+    document.getElementById("summary").innerHTML = `
+        DDS Today: ₹${data.dds}
+    `;
+}
+
+
+// 🔥 INIT
+window.onload = function(){
+    loadDDS();
+}
+
+function openDDSLedger(id){
+    window.location.href = `/dds_ledger.html?dds_id=${id}`;
+}
+
+async function deleteMember(){
+
+    if(!selectedId){
+        alert("Select member first");
+        return;
+    }
+
+    let btn = event.target;
+    btn.innerText = "Deleting...";
+    btn.disabled = true;
+
+    if(!confirm("Delete member?")){
+        btn.innerText = "Delete Member";
+        btn.disabled = false;
+        return;
+    }
+
+    await fetch("/delete-dds-member",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({id:selectedId})
+    });
+
+    alert("Deleted");
+
+    btn.innerText = "Delete Member";
+    btn.disabled = false;
+
+    loadDDS();
+}
+
+let selectedId = null;
+
+function selectRow(row, id){
+
+    // remove old selection
+    document.querySelectorAll("tr").forEach(r => {
+        r.classList.remove("selected");
+    });
+
+    // highlight new
+    row.classList.add("selected");
+
+    selectedId = id;
+}
+
+async function closeDDS(id){
+
+    if(!confirm("Close this DDS account?")) return;
+
+    let res = await fetch("/close-dds", {
+        method:"POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            dds_id: id
+        })
+    });
+
+    let data = await res.json();
+
+    alert("Account Closed");
+
+    loadDDS();
+}
+
+</script>
+
+</body>
+</html>

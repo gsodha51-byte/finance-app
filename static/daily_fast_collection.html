@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Daily Loan Collection</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+<style>
+table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+}
+
+th, td{
+    border:1px solid #ccc;
+    padding:5px;
+    text-align:center;
+}
+
+th{
+    background:#2c3e50;
+    color:white;
+}
+
+tr.selected{
+    background:#ffeaa7 !important;
+}
+
+input{ width:60px; }
+
+.pending{ color:red; }
+tr.pending-row {
+    background: #ffe6e6;
+}
+
+/* 🟢 Total column (green) */
+td:nth-child(17), th:nth-child(17){
+    background: #23fa01 !important;
+    color: #3307e5;
+    font-weight: bold;
+}
+
+/* 🔵 Expected column (blue) */
+td:nth-child(18), th:nth-child(18){
+    background: #f70f03 !important;
+    color: #060606;
+    font-weight: bold;
+}
+
+button {
+    padding: 6px 12px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+/* 🟢 hover effect */
+button:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+}
+
+/* 🔥 click effect */
+button:active {
+    transform: scale(0.95);
+    background-color: black !important;
+    color: white !important;
+}
+
+</style>
+</head>
+
+<body>
+
+<h2>📅 Daily Loan Collection</h2>
+<div id="summary" style="text-align:center; font-weight:bold; margin:10px;">
+    Total: ₹0
+</div>
+<div id="loanSummary" style="text-align:center; font-weight:bold; margin:5px;"></div>
+
+<table>
+<thead id="thead"></thead>
+<tbody id="tbody"></tbody>
+</table>
+
+<br>
+
+<!-- 🔥 BOTTOM BUTTONS -->
+<div style="text-align:center;">
+    <button onclick="openDashboard()" style="background:orange;">
+        Daily Collection
+    </button>
+
+    <button onclick="bulkPay()" style="background:green;color:white;">
+        OK Paid (All)
+    </button>
+
+    <button onclick="deleteMember()" style="background:red;color:white;">
+        Delete Member
+    </button>
+    
+    <button onclick="search()">Search</button>
+</div>
+
+<br>
+<button onclick="goBack()">⬅ Back</button>
+
+<script>
+
+let selectedLoanId = null;
+
+// 🔥 LOAD
+async function load(){
+
+    let res = await fetch("/fast-collection?type=Daily");
+    let data = await res.json();
+
+    // HEADER
+    let header = `
+    <tr>
+        <th>Sr</th>
+        <th>Acc</th>
+        <th>Name</th>
+        <th>Mobile</th>
+        <th>Loan</th>
+        <th>Inst</th>
+    `;
+
+    let today = new Date();
+
+    for(let i=10;i>0;i--){
+        let d = new Date();
+        d.setDate(today.getDate() - i);
+
+        let str = d.toISOString().slice(0,10);
+        header += `<th>${str}</th>`;
+    }
+
+    header += `
+        <th>Today</th>
+        <th>Total</th>
+        <th>Expected</th>
+        <th>Pending</th>
+        <th>Today Pending</th>
+        <th>Pay</th>
+    </tr>
+    `;
+
+    document.getElementById("thead").innerHTML = header;
+
+    // BODY
+    let total = 0;
+    let html = "";
+
+    data.forEach((d, index)=>{
+
+        total += (d.today || 0);
+
+        html += `
+        <tr class="${isLate(d) ? 'pending-row' : ''}"
+            onclick="selectRow(this, ${d.loan_id})"
+            ondblclick="openLedger(${d.loan_id})"
+            style="cursor:pointer;">
+
+            <td>${index+1}</td>
+            <td>${d.account}</td>
+            <td>${d.name}</td>
+            <td>${d.mobile}</td>
+            <td>${d.loan}</td>
+            <td>${d.inst}</td>
+        `;
+
+        d.last10.forEach(v=>{
+            html += `<td>${v}</td>`;
+        });
+
+        html += `
+            <td>${d.today || 0}</td>
+            <td>${d.total}</td>
+            <td>${d.expected}</td>
+            <td class="pending">${d.pending}</td>
+            <td>${d.today_pending}</td>
+            <td>
+                ₹ <input type="number" id="amt_${d.loan_id}">
+                <select id="mode_${d.loan_id}">
+                    <option value="Cash">Cash</option>
+                    <option value="Online">Online</option>
+                </select>
+                <button onclick="pay(${d.loan_id})">OK</button>
+            </td>
+        </tr>
+        `;
+    });
+
+    document.getElementById("tbody").innerHTML = html;
+
+    document.getElementById("summary").innerText =
+        `Total: ₹${total}`;
+
+    // 👇 यही exact जगह है
+    let res2 = await fetch("/loan-today-summary");
+    let s = await res2.json();
+
+    document.getElementById("loanSummary").innerHTML = `
+    Loan Today:<br>
+    Cash → CR: ₹${s.cash_cr || 0} | DR: ₹${s.cash_dr || 0} <br>
+    Bank → CR: ₹${s.bank_cr || 0} | DR: ₹${s.bank_dr || 0}
+    `;
+    
+}
+
+// 🔥 ROW SELECT
+function selectRow(row, id){
+
+    document.querySelectorAll("tbody tr").forEach(r=>{
+        r.classList.remove("selected");
+    });
+
+    row.classList.add("selected");
+    selectedLoanId = id;
+}
+
+// 🔥 DOUBLE CLICK → LEDGER
+function openLedger(id){
+    window.location.href = `/ledger.html?loan_id=${id}`;
+}
+
+// 🔥 PAYMENT
+async function pay(id){
+
+    let amt = document.getElementById("amt_"+id).value;
+    let mode = document.getElementById("mode_"+id).value;
+
+    if(!amt){
+        alert("Enter amount");
+        return;
+    }
+
+    await fetch("/collect", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            loan_id: id,
+            amount: amt,
+            mode: mode
+        })
+    });
+
+    load();
+}
+
+// 🔥 BULK PAY
+async function bulkPay(){
+
+    let inputs = document.querySelectorAll("input[id^='amt_']");
+
+    for(let i of inputs){
+
+        let id = i.id.split("_")[1];
+        let amt = i.value;
+
+        // ✅ FIX: proper check
+        if(!amt || amt <= 0) continue;
+
+        let mode = document.getElementById("mode_"+id).value;
+
+        await fetch("/collect", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                loan_id: id,
+                amount: amt,
+                mode: mode
+            })
+        });
+    }
+
+    alert("✅ All Payments Done");
+
+    load();
+}
+
+// 🔥 DELETE
+async function deleteMember(){
+
+    if(!selectedLoanId){
+        alert("Select row first");
+        return;
+    }
+
+    if(!confirm("Delete this member?")) return;
+
+    await fetch(`/delete-member?loan_id=${selectedLoanId}`,{
+        method:"POST"
+    });
+
+    load();
+}
+
+// 🔥 OPEN DASHBOARD
+function openDashboard(){
+    window.location.href = "daily_dashboard.html";
+}
+
+// 🔍 SEARCH (basic)
+function search(){
+    let name = prompt("Enter name");
+
+    if(!name) return;
+
+    document.querySelectorAll("tbody tr").forEach(r=>{
+        if(r.innerText.toLowerCase().includes(name.toLowerCase())){
+            r.style.display = "";
+        }else{
+            r.style.display = "none";
+        }
+    });
+}
+
+// 🔙 BACK
+function goBack(){
+    window.history.back();
+}
+
+load();
+
+function isLate(d){
+
+    let start = new Date(d.start_date);
+    let today = new Date();
+
+    let diffDays = Math.floor((today - start) / (1000*60*60*24));
+
+    let expected = diffDays * d.inst;
+
+    return d.total < expected;
+}
+
+function calcTodayPending(d){
+
+    let start = new Date(d.start_date);
+    let today = new Date();
+
+    let diffDays = Math.floor((today - start) / (1000*60*60*24));
+
+    // ❗ limit लगा दो (max 100 days)
+    if(diffDays > 100) diffDays = 100;
+
+    let expected = diffDays * d.inst;
+
+    let todayPending = expected - d.total;
+
+    return todayPending > 0 ? todayPending : 0;
+}
+
+</script>
+
+</body>
+</html>

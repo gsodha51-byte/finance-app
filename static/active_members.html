@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Active Members</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+
+    <style>
+    body{ font-family:Arial; text-align:center; background:#f5f5f5; }
+    table{ width:80%; margin:20px auto; border-collapse:collapse; }
+    th,td{ border:1px solid #ccc; padding:8px; }
+    th{ background:#2c3e50; color:white; }
+    </style>
+</head>
+
+<body>
+
+<h2>👥 Active Members</h2>
+
+<table>
+<thead>
+<tr>
+    <th>Member Name</th>
+    <th>Mobile</th>
+    <th>DDS</th>
+    <th>Daily Loan</th>
+    <th>Monthly Loan</th>
+    <th>Total</th>
+</tr>
+</thead>
+
+<tbody id="data"></tbody>
+</table>
+
+<br>
+<button onclick="history.back()">⬅ Back</button>
+
+<script>
+
+async function load(){
+
+    let res = await fetch("/active-members");
+    let data = await res.json();
+
+    let html = "";
+
+    data.forEach(d => {
+        html += `
+        <tr>
+            <td>${d.name}</td>
+            <td>${d.mobile}</td>
+            <td>${d.dds}</td>
+            <td>${d.daily}</td>
+            <td>${d.monthly}</td>
+            <td ondblclick="openAccounts('${d.mobile}')" style="cursor:pointer;color:blue;">
+                ${d.dds + d.daily + d.monthly}
+            </td>
+        </tr>
+        `;
+    });
+
+    document.getElementById("data").innerHTML = html;
+}
+
+load();
+
+function openAccounts(mobile){
+    window.location.href = "/member_accounts.html?mobile=" + mobile;
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add DDS Member</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <style>
+        body{
+            font-family: Arial;
+            background:#eef2f7;
+            text-align:center;
+        }
+
+        .box{
+            width:320px;
+            margin:50px auto;
+            background:white;
+            padding:20px;
+            border-radius:10px;
+            box-shadow:0 0 10px rgba(0,0,0,0.1);
+        }
+
+        h2{
+            margin-bottom:15px;
+        }
+
+        input{
+            width:90%;
+            padding:8px;
+            margin:6px 0;
+            border:1px solid #ccc;
+            border-radius:5px;
+        }
+
+        button{
+            width:95%;
+            padding:10px;
+            margin-top:10px;
+            background:#28a745;
+            color:white;
+            border:none;
+            border-radius:5px;
+            font-size:14px;
+            cursor:pointer;
+        }
+
+        button:hover{
+            background:#218838;
+        }
+
+        .back{
+            display:inline-block;
+            margin-top:15px;
+            font-size:13px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="box">
+
+<h2>➕ Add DDS Member</h2>
+
+<input id="mobile" placeholder="📱 Mobile" onblur="checkMember()">
+<input id="name" placeholder="👤 Name">
+<input id="father" placeholder="👨 Father Name">
+<input id="village" placeholder="🏡 Village">
+
+<button onclick="save()">💾 Save DDS</button>
+
+<a href="dds.html" class="back">← Back</a>
+
+</div>
+
+<script>
+
+// 🔍 Mobile से auto fill
+async function checkMember(){
+
+    let m = mobile.value;
+
+    if(!m) return;
+
+    let res = await fetch(`/find-member?mobile=${m}`);
+    let d = await res.json();
+
+    if(d.found){
+        name.value = d.name;
+        father.value = d.father;
+        village.value = d.village;
+    }
+}
+
+
+async function save(){
+
+    let mobileVal = document.getElementById("mobile").value;
+    let nameVal = document.getElementById("name").value;
+    let fatherVal = document.getElementById("father").value;
+    let villageVal = document.getElementById("village").value;
+
+    if(!mobileVal){
+        alert("Mobile required");
+        return;
+    }
+
+    if(!nameVal){
+        alert("Name required");
+        return;
+    }
+
+    let res = await fetch("/create-dds",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            mobile: mobileVal,
+            name: nameVal,
+            father: fatherVal,
+            village: villageVal
+        })
+    });
+
+    let data = await res.json();
+
+    if(data.status === "ok"){
+        alert("✅ DDS Member Saved");
+        window.location.href = "dds_fast_collection.html";
+    }else{
+        alert("❌ Save failed");
+    }
+}
+
+</script>
+
+</body>
+</html>

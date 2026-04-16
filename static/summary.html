@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Summary</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+<style>
+body{
+    font-family: Arial;
+    text-align:center;
+    background:#f5f5f5;
+}
+
+h2{ margin-top:20px; }
+
+table{
+    width:85%;
+    margin:15px auto;
+    border-collapse:collapse;
+}
+
+th, td{
+    border:1px solid #ccc;
+    padding:8px;
+}
+
+th{
+    background:#2c3e50;
+    color:white;
+}
+
+.section{
+    background:white;
+    padding:10px;
+    margin:15px;
+    border-radius:10px;
+}
+
+input{
+    padding:5px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>📊 Summary Dashboard</h2>
+
+📅 <input type="date" id="date" onchange="load()">
+
+<!-- 🔥 1. Today Collection -->
+<div class="section">
+<h3>💰 Today Collection</h3>
+
+<table>
+<thead>
+<tr>
+    <th rowspan="2">Type</th>
+    <th colspan="2">Cash</th>
+    <th colspan="2">Bank</th>
+</tr>
+<tr>
+    <th>CR</th>
+    <th>DR</th>
+    <th>CR</th>
+    <th>DR</th>
+</tr>
+</thead>
+<tbody id="todayTable"></tbody>
+</table>
+</div>
+
+<!-- 🔥 2. Mode Wise -->
+<div class="section">
+<h3>💳 Mode Wise</h3>
+<p id="modeWise"></p>
+</div>
+
+<!-- 🔥 3. Loan Status -->
+<div class="section">
+<h3>📊 Loan Status</h3>
+<p id="loanStatus"></p>
+</div>
+
+<!-- 🔥 4. Pending -->
+<div class="section">
+<h3>⚠️ Pending</h3>
+<p id="pending"></p>
+</div>
+
+<!-- 🔥 5. Today Work -->
+<div class="section">
+<h3>📅 Today Activity</h3>
+<p id="activity"></p>
+</div>
+
+<br>
+<button onclick="goBack()">⬅ Back</button>
+
+<script>
+
+async function load(){
+
+    let date = document.getElementById("date").value;
+
+    let url = "/summary";
+    if(date){
+        url += "?date=" + date;
+    }
+
+    let res = await fetch(url);
+    let d = await res.json();
+
+    // 🔥 1. Today Collection Table
+    document.getElementById("todayTable").innerHTML = `
+    <tr>
+        <td>DDS</td>
+        <td>${d.dds_cash_cr}</td>
+        <td>${d.dds_cash_dr}</td>
+        <td>${d.dds_bank_cr}</td>
+        <td>${d.dds_bank_dr}</td>
+    </tr>
+
+    <tr>
+        <td>Daily Loan</td>
+        <td>${d.daily_cash_cr}</td>
+        <td>${d.daily_cash_dr}</td>
+        <td>${d.daily_bank_cr}</td>
+        <td>${d.daily_bank_dr}</td>
+    </tr>
+
+    <tr>
+        <td>Monthly Loan</td>
+        <td>${d.monthly_cash_cr}</td>
+        <td>${d.monthly_cash_dr}</td>
+        <td>${d.monthly_bank_cr}</td>
+        <td>${d.monthly_bank_dr}</td>
+    </tr>
+    `;
+
+    // 🔥 2. Mode Wise
+    document.getElementById("modeWise").innerHTML = `
+        Cash: ₹${d.cash_total} |
+        Bank: ₹${d.bank_total}
+    `;
+
+    document.getElementById("loanStatus").innerHTML = `
+    <b>Total Active Members:</b> 
+    <span ondblclick="openActiveMembers()" style="cursor:pointer;color:blue;">
+        ${d.total_members}
+    </span>
+
+    <b>Active Loans:</b><br>
+    DDS: ${d.active_dds} <br>
+    Daily Loan: ${d.active_daily} <br>
+    Monthly Loan: ${d.active_monthly} <br><br>
+
+    <b>Closed Loans:</b><br>
+    DDS: ${d.closed_dds} <br>
+    Daily Loan: ${d.closed_daily} <br>
+    Monthly Loan: ${d.closed_monthly} <br>
+    `;
+
+    // 🔥 4. Pending
+    document.getElementById("pending").innerHTML = `
+        Daily Pending: ₹${d.daily_pending} |
+        Monthly Pending: ₹${d.monthly_pending}
+    `;
+
+    // 🔥 5. Today Activity
+    document.getElementById("activity").innerHTML = `
+        New Members: ${d.new_members} |
+        Collections: ${d.collections} |
+        Closed Accounts: ${d.closed_today}
+    `;
+}
+
+// default today
+document.getElementById("date").value =
+    new Date().toISOString().split("T")[0];
+
+load();
+
+function goBack(){
+    window.history.back();
+}
+
+function openActiveMembers(){
+    window.location.href = "/active_members.html";
+}
+
+</script>
+
+</body>
+</html>

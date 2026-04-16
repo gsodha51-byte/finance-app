@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Day Book</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <style>
+
+    body{
+        font-family: Arial;
+        background:#f4f6f9;
+    }
+
+    /* main box */
+    table{
+        border-collapse: collapse;
+    }
+
+    /* headings */
+    h2{
+        letter-spacing:1px;
+    }
+
+    /* section headers */
+    h3{
+        background:#2c3e50;
+        color:white;
+        padding:5px;
+    }
+
+    /* table */
+    th{
+        background:#34495e;
+        color:white;
+        padding:6px;
+    }
+
+    td{
+        padding:5px;
+        text-align:center;
+    }
+
+    /* zebra rows */
+    tbody tr:nth-child(even){
+        background:#f2f2f2;
+    }
+
+    /* totals highlight */
+    tfoot{
+        background:#ffeaa7;
+        font-weight:bold;
+    }
+
+    /* credit green */
+    #creditBody tr td:nth-child(3){
+        color:green;
+        font-weight:bold;
+    }
+
+    /* debit red */
+    #debitBody tr td:nth-child(3){
+        color:red;
+        font-weight:bold;
+    }
+
+    /* bank blue */
+    td:nth-child(4){
+        color:#0984e3;
+        font-weight:bold;
+    }
+
+    </style>
+
+</head>
+
+<body>
+
+<h2 style="text-align:center; background:#2c3e50; color:white; padding:10px;">
+📖 DAY BOOK
+</h2>
+
+<div style="text-align:center;">
+    Date:
+    <input type="date" id="date">
+
+    <select id="type">
+        <option value="ALL">ALL</option>
+        <option value="LOAN">Loan</option>
+        <option value="DDS">DDS</option>
+        <option value="GL">GL</option>
+    </select>
+
+    <button onclick="load()">Load</button>
+    <button onclick="window.print()">🖨 Print</button>
+</div>
+
+<br>
+
+<div style="text-align:center; margin:10px; background:white; padding:10px; border-radius:8px;">
+    <b>Opening Cash:</b> <span id="ocash"></span> |
+    <b>Opening Bank:</b> <span id="obank"></span> |
+    <b>Closing Cash:</b> <span id="ccash2"></span> |
+    <b>Closing Bank:</b> <span id="cbank2"></span>
+</div>
+
+<table border="1" width="100%">
+<tr>
+
+<!-- CREDIT -->
+<td width="50%" valign="top">
+<h3 style="text-align:center;">CREDIT</h3>
+
+<table border="1" width="100%">
+<thead>
+<tr>
+<th>Date</th>
+<th>Particular</th>
+<th>Cash</th>
+<th>Bank</th>
+</tr>
+</thead>
+<tbody id="creditBody"></tbody>
+
+<tfoot>
+<tr style="font-weight:bold;">
+<td colspan="2">TOTAL</td>
+<td id="ccash"></td>
+<td id="cbank"></td>
+</tr>
+</tfoot>
+</table>
+</td>
+
+<!-- DEBIT -->
+<td width="50%" valign="top">
+<h3 style="text-align:center;">DEBIT</h3>
+
+<table border="1" width="100%">
+<thead>
+<tr>
+<th>Date</th>
+<th>Particular</th>
+<th>Cash</th>
+<th>Bank</th>
+</tr>
+</thead>
+<tbody id="debitBody"></tbody>
+
+<tfoot>
+<tr style="font-weight:bold;">
+<td colspan="2">TOTAL</td>
+<td id="dcash"></td>
+<td id="dbank"></td>
+</tr>
+</tfoot>
+</table>
+</td>
+
+</tr>
+</table>
+
+<script>
+
+let loanExpanded = false;
+
+async function load(){
+
+    let date = document.getElementById("date").value;
+    
+    let res = await fetch(`/daybook?date=${date}`);
+    let data = await res.json();
+
+    console.log("DAYBOOK DATA:", data);
+    
+    let totalCashC = 0;
+    let totalBankC = 0;
+    let totalCashD = 0;
+    let totalBankD = 0;
+
+    document.getElementById("ocash").innerText = data.opening_cash;
+    document.getElementById("obank").innerText = data.opening_bank;
+    document.getElementById("ccash2").innerText = data.closing_cash;
+    document.getElementById("cbank2").innerText = data.closing_bank;
+
+    let chtml = "";
+    let dhtml = "";
+
+    data.credit.forEach(d => {
+
+        // 🔥 LOAN PARENT
+        if(d.particular === "Loan Collection"){
+
+            totalCashC += d.cash;
+            totalBankC += d.bank;
+
+            chtml += `
+            <tr onclick="toggleLoan()" style="cursor:pointer; font-weight:bold; background:#dfe6e9;">
+                <td>${d.date.split("T")[0]}</td>
+                <td style="text-align:left; padding-left:10px;">
+                    💰 Loan Collection ${loanExpanded ? "▼" : "▶"}
+                </td>
+                <td>${d.cash}</td>
+                <td>${d.bank}</td>
+            </tr>`;
+            return;
+        }
+
+        // 🔥 CHILD (Daily / Monthly)
+        if(d.particular.includes("Daily") || d.particular.includes("Monthly")){
+
+        // ❗ अगर expand नहीं है तो hide
+        if(!loanExpanded) return;
+
+        let type = d.particular.includes("Daily") ? "Daily" : "Monthly";
+
+        chtml += `
+        <tr ondblclick="openDetails('${type}')" 
+            style="background:#f8f9fa; cursor:pointer;">
+            <td></td>
+            <td style="padding-left:30px;">${d.particular}</td>
+            <td>${d.cash}</td>
+            <td>${d.bank}</td>
+        </tr>`;
+        return;
+    }
+
+        // 🔹 DDS
+        if(d.particular.includes("DDS")){
+
+            totalCashC += d.cash;
+            totalBankC += d.bank;
+
+            chtml += `
+            <tr ondblclick="openDetails('DDS')" style="cursor:pointer;">
+                <td>${d.date.split("T")[0]}</td>
+                <td>🏦 ${d.particular} (double click)</td>
+                <td>${d.cash}</td>
+                <td>${d.bank}</td>
+            </tr>`;
+            return;
+        }
+
+        totalCashC += d.cash;
+        totalBankC += d.bank;
+
+        chtml += `
+        <tr>
+            <td>${d.date.split("T")[0]}</td>
+            <td>📒 ${d.particular}</td>
+            <td>${d.cash}</td>
+            <td>${d.bank}</td>
+        </tr>`;
+
+        });
+
+    data.debit.forEach(d => {
+
+        totalCashD += d.cash;
+        totalBankD += d.bank;
+
+        dhtml += `
+        <tr>
+            <td>${d.date.split("T")[0]}</td>
+            <td>
+                ${d.particular === "Loan Collection" ? "💰 Loan" : 
+                  d.particular === "DDS Collection" ? "🏦 DDS" : 
+                  "📒 " + d.particular}
+            </td>
+            <td>${d.cash}</td>
+            <td>${d.bank}</td>
+        </tr>`;
+    });
+
+    document.getElementById("creditBody").innerHTML = chtml;
+    document.getElementById("debitBody").innerHTML = dhtml;
+    document.getElementById("ccash").innerText = totalCashC;
+    document.getElementById("cbank").innerText = totalBankC;
+    document.getElementById("dcash").innerText = totalCashD;
+    document.getElementById("dbank").innerText = totalBankD;
+
+    // 🔥 rows बराबर करने के लिए
+    let creditRows = document.getElementById("creditBody").children.length;
+    let debitRows = document.getElementById("debitBody").children.length;
+
+    let diff = Math.abs(creditRows - debitRows);
+
+    if(creditRows > debitRows){
+        for(let i=0; i<diff; i++){
+            document.getElementById("debitBody").innerHTML += `
+            <tr>
+                <td>&nbsp;</td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>`;
+        }
+    }
+    else if(debitRows > creditRows){
+        for(let i=0; i<diff; i++){
+            document.getElementById("creditBody").innerHTML += `
+            <tr>
+                <td>&nbsp;</td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>`;
+        }
+    }
+
+    // totals
+    document.getElementById("ccash").innerText = totalCashC;
+    document.getElementById("cbank").innerText = totalBankC;
+    document.getElementById("dcash").innerText = totalCashD;
+    document.getElementById("dbank").innerText = totalBankD;
+}
+
+window.onload = function(){
+
+    let today = new Date().toISOString().split('T')[0];
+
+    document.getElementById("date").value = today;
+
+    load();
+}
+
+function toggleLoan(){
+    loanExpanded = !loanExpanded;
+    load(); // reload UI
+}
+
+function openDetails(type){
+
+    let date = document.getElementById("date").value;
+
+    let url = "";
+
+    if(type === "DDS"){
+        url = `daybook-loan-details.html?date=${date}&type=DDS`;
+    }else{
+        url = `daybook-loan-details.html?date=${date}&type=${type}`;
+    }
+
+    window.open(url, "_blank");
+}
+
+</script>
+
+</body>
+</html>

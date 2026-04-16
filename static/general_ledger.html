@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>General Ledger</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <style>
+
+    .ledger-box{
+        width:350px;
+        margin:80px auto;
+        background:#ffffff;
+        padding:25px;
+        border-radius:12px;
+        box-shadow:0 10px 25px rgba(0,0,0,0.2);
+        font-family:Arial;
+    }
+
+    .ledger-box h2{
+        margin-bottom:20px;
+        color:#2c3e50;
+    }
+
+    .form-group{
+        margin-bottom:15px;
+    }
+
+    .form-group label{
+        display:block;
+        font-size:13px;
+        margin-bottom:5px;
+        color:#555;
+    }
+
+    .form-group input{
+        width:100%;
+        padding:8px;
+        border:1px solid #ccc;
+        border-radius:6px;
+    }
+
+    .row{
+        display:flex;
+        gap:10px;
+    }
+
+    .row input{
+        flex:2;
+    }
+
+    .row select{
+        flex:1;
+        padding:6px;
+        border-radius:6px;
+        border:1px solid #ccc;
+    }
+
+    .btns{
+        text-align:right;
+        margin-top:20px;
+    }
+
+    .btns button{
+        padding:8px 15px;
+        border:none;
+        border-radius:6px;
+        cursor:pointer;
+    }
+
+    .save{
+        background:#27ae60;
+        color:white;
+    }
+
+    .cancel{
+        background:#e74c3c;
+        color:white;
+    }
+
+    input:focus, select:focus{
+        border-color:#27ae60;
+        outline:none;
+    }
+
+    </style>
+
+</head>
+
+<body>
+
+<h2 style="text-align:center;">General Ledger</h2>
+
+<div style="text-align:center; margin:10px;">
+    <button onclick="openLedgerForm()">+ Add Ledger</button>
+    <button onclick="addEntry()">+ Add Entry</button>
+    <button onclick="showLedger()">📊 Show Ledger</button>
+</div>
+
+<div style="text-align:center;">
+    <button onclick="goBack()">Back</button>
+</div>
+
+<script>
+
+function goBack(){
+    window.history.back();
+}
+
+function addEntry(){
+    document.getElementById("popup").style.display = "block";
+    loadLedgers();
+}
+
+function closePopup(){
+    document.getElementById("popup").style.display = "none";
+}
+
+function openLedgerForm(){
+    document.getElementById("ledgerPopup").style.display = "block";
+}
+
+function closeLedgerForm(){
+    document.getElementById("ledgerPopup").style.display = "none";
+}
+
+async function saveLedger(){
+
+    let name = document.getElementById("ledger_name").value;
+
+    let res = await fetch("/add-ledger", {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ name: name })
+    });
+
+    let data = await res.json();
+
+    if(data.status == "error"){
+        alert("❌ Ledger already exists");
+        return;
+    }
+
+    alert("✅ Ledger Added");
+    location.reload();
+}
+
+async function loadLedgers(){
+
+    let res = await fetch("/ledgers");
+    let data = await res.json();
+
+    let html = `<option value="">-- Select Party --</option>`;
+
+    data.forEach(l => {
+        html += `<option>${l}</option>`;
+    });
+
+    document.getElementById("account").innerHTML = html;
+}
+
+async function saveEntry(){
+
+    let btn = document.getElementById("saveBtn");
+
+    let account = document.getElementById("account").value;
+    let type = document.getElementById("type").value;
+    let amount = document.getElementById("amount").value;
+    let mode = document.getElementById("mode").value;
+    let note = document.getElementById("note").value;
+
+    // ✅ validation
+    if(!account || !type || !amount || amount <= 0 || !mode){
+        alert("⚠ Please fill all fields");
+        return;
+    }
+
+    if(!account || !amount || amount <= 0){
+        alert("⚠ Fill all fields");
+        return;
+    }
+
+    if(btn.disabled) return;
+
+    btn.disabled = true;
+    btn.innerText = "Saving...";
+
+    try {
+
+        let res = await fetch("/add-gl", {
+            method:"POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({
+                account, type, amount, mode, note
+            })
+        });
+
+        let data = await res.json();
+
+        alert("Saved ✅");
+
+        document.getElementById("amount").value = "";
+        document.getElementById("note").value = "";
+
+        closePopup();
+
+    } catch(err) {
+
+        alert("❌ Error");
+
+    } finally {
+
+        btn.disabled = false;
+        btn.innerText = "Save";
+    }
+}
+
+function showLedger(){
+    window.location.href = "/ledger_list.html";
+}
+
+async function deleteEntry(id){
+
+    if(!confirm("Delete this entry?")) return;
+
+    try {
+
+        let res = await fetch(`/delete-entry/${id}`, {
+            method: "DELETE"
+        });
+
+        let data = await res.json();
+
+        if(data.status === "ok"){
+            alert("Deleted successfully ✅");
+
+            // 🔥 UI refresh
+            location.reload();
+        } else {
+            alert("❌ Delete failed");
+        }
+
+    } catch(err){
+        console.log(err);
+        alert("❌ Error deleting entry");
+    }
+}
+
+
+</script>
+<div id="popup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+
+    <div style="background:white; width:300px; margin:100px auto; padding:20px;">
+
+        <h3>Add Entry</h3>
+
+        Party:<br>
+        <select id="account" style="width:100%; height:40px; margin-bottom:10px;">
+          <option value="">-- Select Party --</option>
+        </select>
+
+        Type:<br>
+        <select id="type" style="width:100%; height:40px; margin-bottom:10px;">
+             <option value="">-- Select Type --</option>
+             <option value="Payment">Payment</option>
+             <option value="Received">Received</option>
+        </select>
+
+        Amount:<br>
+        <input type="number" id="amount" style="width:100%; height:35px;"><br><br>
+
+        <select id="mode" style="width:100%; height:40px;">
+            <option value="">-- Select Mode --</option>
+            <option value="Cash">Cash</option>
+            <option value="Online">Online</option>
+        </select>
+
+        <label>Narration</label>
+        <input type="text" id="note" placeholder="Enter details..." style="width:100%; height:35px;"><br><br>
+
+        <button id="saveBtn" onclick="saveEntry()" style="background:green;color:white;">
+            Save
+        </button>
+        <button onclick="closePopup()">Cancel</button>
+
+    </div>
+</div>
+
+<div id="ledgerPopup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+
+    <div class="ledger-box">
+
+        <h2>➕ Add Ledger</h2>
+
+        <div class="form-group">
+            <label>Ledger Name</label>
+            <input type="text" id="ledger_name" placeholder="Enter ledger name">
+        </div>
+
+        <div class="form-group">
+            <label>Opening Balance</label>
+            <div class="row">
+                <input type="number" id="opening" placeholder="0.00">
+                <select id="ledger_type">
+                    <option value="dr">Dr</option>
+                    <option value="cr">Cr</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="btns">
+            <button class="save" onclick="saveLedger()">Save</button>
+            <button class="cancel" onclick="closeLedgerForm()">Cancel</button>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

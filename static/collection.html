@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Collection</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body>
+
+<h2>Loan Collection</h2>
+
+<table border="1">
+<thead>
+<tr>
+<th>Name</th>
+<th>Loan</th>
+<th>Installment</th>
+<th>Paid</th>
+<th>Pending</th>
+<th>Action</th>
+</tr>
+</thead>
+
+<tbody id="loanTable"></tbody>
+</table>
+
+<br>
+<a href="/">⬅ Back to Dashboard</a>
+
+<script>
+
+async function loadLoans() {
+    let res = await fetch("/loans");
+    let data = await res.json();
+
+    let table = document.getElementById("loanTable");
+    table.innerHTML = "";
+
+    data.forEach(l => {
+        table.innerHTML += `
+        <tr>
+            <td>${l.name}</td>
+            <td>${l.loan}</td>
+            <td>${l.installment}</td>
+            <td>${l.paid}</td>
+            <td>${l.pending}</td>
+            <td>
+                <button onclick="collect(${l.loan_id}, ${l.installment})">
+                    Collect
+                </button>
+            </td>
+        </tr>
+        `;
+    });
+}
+
+async function collect(id, amount) {
+    await fetch(`/collect?loan_id=${id}&amount=${amount}`, {
+        method: "POST"
+    });
+
+    alert("Collected");
+    loadLoans();
+}
+
+window.onload = loadLoans;
+
+async function saveGL(){
+
+    let ledger = document.getElementById("ledger").value;
+    let debit = document.getElementById("debit").value || 0;
+    let credit = document.getElementById("credit").value || 0;
+    let mode = document.getElementById("mode").value;
+    let note = document.getElementById("note").value;
+
+    await fetch("/add-gl", {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+            ledger: ledger,
+            debit: debit,
+            credit: credit,
+            mode: mode,
+            note: note
+        })
+    });
+
+    alert("Saved");
+    location.reload();
+}
+
+</script>
+
+</body>
+</html>

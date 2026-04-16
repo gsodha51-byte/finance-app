@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ledger List</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+
+<body>
+
+<h2 style="text-align:center;">Ledger List</h2>
+
+<table border="1" width="50%" align="center" cellpadding="5">
+<thead>
+<tr>
+    <th>Ledger Name</th>
+</tr>
+</thead>
+
+<tbody id="tbody"></tbody>
+</table>
+
+<br>
+
+<div style="text-align:center;">
+    <button onclick="goBack()">Back</button>
+</div>
+
+<script>
+
+async function load(){
+
+    let res = await fetch("/ledgers");
+    let data = await res.json();
+
+    let html = "";
+
+    data.forEach(name => {
+        html += `
+        <tr onclick="openLedger('${name}')" style="cursor:pointer;">
+            <td>${name}</td>
+        </tr>
+        `;
+    });
+
+    document.getElementById("tbody").innerHTML = html;
+}
+
+function openLedger(name){
+    window.location.href = "/ledger_detail.html?name=" + encodeURIComponent(name);
+}
+
+function goBack(){
+    window.history.back();
+}
+
+load();
+
+</script>
+
+</body>
+</html>

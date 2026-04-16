@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Loan Details</title>
+
+    <style>
+        body{
+            font-family: Arial;
+            background:#f4f6f9;
+        }
+
+        h2{
+            text-align:center;
+            background:#2c3e50;
+            color:white;
+            padding:10px;
+        }
+
+        table{
+            border-collapse: collapse;
+            width:90%;
+            margin:auto;
+            background:white;
+        }
+
+        th{
+            background:#34495e;
+            color:white;
+            padding:8px;
+        }
+
+        td{
+            padding:6px;
+            text-align:center;
+        }
+
+        tr:nth-child(even){
+            background:#f2f2f2;
+        }
+
+        tfoot{
+            background:#ffeaa7;
+            font-weight:bold;
+        }
+
+        td {
+            padding:6px;
+            text-align:center;
+            white-space: nowrap;   /* 👈 important */
+        }
+
+        .name-cell{
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;  /* 👈 left align */
+            padding-left: 10px;
+        }
+
+        tr.selected{
+            background:#cce5ff !important;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<h2 id="title">Loan Details</h2>
+
+<table border="1">
+<thead>
+<tr>
+<th>Date</th>
+<th>Account No.</th>
+<th>Name</th>
+<th>Cash</th>
+<th>Bank</th>
+</tr>
+</thead>
+
+<tbody id="tbody"></tbody>
+
+<tfoot>
+<tr>
+<td colspan="3">TOTAL</td>
+<td id="tcash"></td>
+<td id="tbank"></td>
+</tr>
+</tfoot>
+
+</table>
+
+<script>
+
+function getParams(){
+    let params = new URLSearchParams(window.location.search);
+    return {
+        date: params.get("date"),
+        type: params.get("type")
+    }
+}
+
+async function load(){
+
+    let {date, type} = getParams();
+
+    // 🔥 TITLE FIX
+    document.getElementById("title").innerText =
+        type + " Collection (" + date + ")";
+
+    let url = "";
+
+    if(type === "DDS"){
+        url = `/dds-details?date=${date}`;
+    }else{
+        url = `/loan-details?date=${date}&type=${type}`;
+    }
+
+    let res = await fetch(url);
+    let data = await res.json();
+
+    let html = "";
+    let totalCash = 0;
+    let totalBank = 0;
+
+    data.forEach(d => {
+
+        totalCash += d.cash;
+        totalBank += d.bank;
+
+        html += `
+        <tr onclick="selectRow(this)" 
+            ondblclick="openLedger('${type === "DDS" ? d.account : d.loan_id}', '${type}')" 
+            style="cursor:pointer;">
+            <td>${d.date.split(" ")[0]}</td>
+            <td>${d.account || "-"}</td>
+            <td class="name-cell">${d.name || "-"}</td>
+            <td>${d.cash || 0}</td>
+            <td>${d.bank || 0}</td>
+        </tr>`;
+    });
+
+    document.getElementById("tbody").innerHTML = html;
+    document.getElementById("tcash").innerText = totalCash;
+    document.getElementById("tbank").innerText = totalBank;
+}
+
+load();
+
+function openLedger(id, type){
+
+    if(!id) return;
+
+    if(type === "DDS"){
+        let ddsId = id.replace("DDS-", "");
+        window.open(`dds_ledger.html?dds_id=${ddsId}`, "_blank");
+    }else{
+        window.open(`ledger.html?loan_id=${id}`, "_blank");
+    }
+}
+
+function selectRow(row){
+
+    document.querySelectorAll("tr").forEach(r => {
+        r.classList.remove("selected");
+    });
+
+    row.classList.add("selected");
+}
+
+</script>
+
+</body>
+</html>
