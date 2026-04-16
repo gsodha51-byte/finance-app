@@ -15,6 +15,11 @@ import time
 import requests
 import smtplib
 from email.mime.text import MIMEText
+from fastapi.responses import FileResponse
+
+@app.get("/")
+def home():
+    return FileResponse("login.html")
 
 otp_store = {}
 
