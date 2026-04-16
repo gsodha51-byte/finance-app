@@ -18,8 +18,8 @@ from email.mime.text import MIMEText
 from fastapi.responses import FileResponse
 
 @app.get("/")
-def home():
-    return FileResponse("login.html")
+def api_home():
+    return FileResponse("static/login.html")
 
 otp_store = {}
 
@@ -2800,4 +2800,4 @@ async def import_excel(file: UploadFile = File(...)):
 # ---------------- STATIC ----------------
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")

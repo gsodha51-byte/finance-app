@@ -78,7 +78,7 @@ async function login(){
         localStorage.setItem("login", "yes");
         localStorage.setItem("role", data.role);
         localStorage.setItem("username", data.username);
-        window.location.href = "/";
+        window.location.href = "/dashboard.html";
     }
     else{
         alert("Invalid login");
